@@ -4,7 +4,7 @@ import pygame
 import os
 
 from world import World, load_level
-from player import Player
+from player import Player, Warrior
 from enemies import Ghost
 from particles import Trail
 from projectiles import Bullet, Fireball, Grenade
@@ -88,6 +88,8 @@ main_menu_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 130, ButtonBG, 0.5, ma
 red = Button(WIDTH//2 - bwidth//4, HEIGHT//2+35, ButtonBG,0.5, t.render('Red', font_color), 10)
 white = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG,0.5, t.render('White', font_color), 10)
 
+warrior = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG,0.5, t.render('Warrior', font_color), 10)
+
 continue_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 40, ButtonBG, 0.5, contiune1, 10)
 save_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, save, 10)
 exit1_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 110, ButtonBG, 0.5, exit, 10)
@@ -159,18 +161,23 @@ def reset_level(level):
 
 	return world_data, level_length, w
 
-def get_info_player(type='admin.white'):
+def get_info_player(type_):
 	config = ConfigParser()
 	config.read(f'./Data/player.properties')
-	global p_reload_time, p_path_img, p_dame
-	p_reload_time = float(config[type]['reload_time'])
-	p_path_img = config['admin']['image_folder'] + type.split('.')[1].title()
-	p_dame = float(config[type]['dame'])
+	global p_reload_time, p_path_img, p_dame, p_class
+	p_reload_time = float(config[type_]['reload_time'])
+	k = config[type_]['class']
+	if k == "Warrior":
+		p_class = Warrior
+	else:
+		p_class = Player
+	p_path_img = config[type_]['image_folder']
+	p_dame = float(config[type_]['dame'])
 
 def reset_player():
-	global p_path_img,p_type
+	global p_path_img,p_type,p_class
 	get_info_player(p_type)
-	p = Player(250, 50, p_path_img)
+	p = p_class(250, 50, p_path_img)
 	moving_left = False
 	moving_right = False
 	return p, moving_left, moving_right
@@ -272,8 +279,9 @@ def load_data_continue_pre_game():
 p_remain_reload = 0
 p_reload_time = 0
 p_path_img = None
-p_type = 'admin.white'
+p_type = 'adminwhite'
 p_dame = 0
+p_class = None
 p, moving_left, moving_right = reset_player()
 
 
@@ -442,10 +450,14 @@ while running:
 	elif select_player:
 		if red.draw(win):
 			game_start = True
-			p_type='admin.red'
+			p_type='adminred'
 
 		if white.draw(win):
 			game_start = True
+
+		if warrior.draw(win):
+			game_start = True
+			p_type = 'warrior'
 
 		if game_start:
 			select_player = False
