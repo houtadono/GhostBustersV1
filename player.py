@@ -45,7 +45,7 @@ class Player(pygame.sprite.Sprite):
 		self.attack_index = 0
 		self.death_index = 0
 		self.hit_index = 0
-		self.fall_index = 0
+		
 
 		self.jump_height = 15
 		self.speed = 3
@@ -172,6 +172,8 @@ class Player(pygame.sprite.Sprite):
 		else:
 			self.dy += self.vel
 
+		if self.attack and not self.jump: # khi skill , đứng yên
+			self.dx = 0
 		self.dx, self.dy = self.check_collision(world, self.dx, self.dy)
 
 		if self.rect.left + self.dx < 0 or self.rect.right + self.dx > WIDTH:
@@ -212,7 +214,7 @@ class Warrior(pygame.sprite.Sprite):
 			left = pygame.transform.flip(right, True, False)
 			self.walk_right.append(right)
 			self.walk_left.append(left)
-		for i in range(1, 9):
+		for i in range(1, 9): # attack
 			image = pygame.image.load(f'{path_img}/PlayerAttack{i}.png')
 			image = pygame.transform.scale(image, (24, 24))
 			self.attack_list.append(image)
@@ -230,7 +232,7 @@ class Warrior(pygame.sprite.Sprite):
 		self.attack_index = 0
 		self.death_index = 0
 		self.hit_index = 0
-		self.fall_index = 0
+		
 
 		self.jump_height = 15
 		self.speed = 3
@@ -244,6 +246,7 @@ class Warrior(pygame.sprite.Sprite):
 
 		self.alive = True
 		self.attack = False
+		self.attack2 = False
 		self.hit = False
 		self.jump = False
 		self.above_ground = True
@@ -281,8 +284,6 @@ class Warrior(pygame.sprite.Sprite):
 				elif self.vel <= 0 or self.vel == self.jump_height:
 					dy = tile[1].top - self.rect.bottom
 					self.above_ground = True
-
-
 		return dx, dy
 
 	def update_animation(self):
@@ -295,7 +296,13 @@ class Warrior(pygame.sprite.Sprite):
 			else:
 				if self.attack:
 					self.attack_index += 1
-					if self.attack_index >= len(self.attack_list):
+					if self.attack2:
+						if self.attack_index >= len(self.attack_list):
+							self.attack_index = 0
+							self.attack2 = False
+							self.attack = False
+						pass
+					elif self.attack_index == 5:
 						self.attack_index = 0
 						self.attack = False
 				if self.hit:
@@ -329,7 +336,6 @@ class Warrior(pygame.sprite.Sprite):
 			elif self.direction == 1:
 				self.image = self.walk_right[self.walk_index]
 
-
 	def update(self, moving_left, moving_right, world):
 		self.dx = 0
 		self.dy = 0
@@ -356,7 +362,8 @@ class Warrior(pygame.sprite.Sprite):
 				self.jump = False
 		else:
 			self.dy += self.vel
-
+		if self.attack and not self.jump: # khi skill , đứng yên
+			self.dx = 0
 		self.dx, self.dy = self.check_collision(world, self.dx, self.dy)
 
 		if self.rect.left + self.dx < 0 or self.rect.right + self.dx > WIDTH:
@@ -364,6 +371,118 @@ class Warrior(pygame.sprite.Sprite):
 
 		self.rect.x += self.dx
 		self.rect.y += self.dy
+
+		self.update_animation()
+
+		
+	def draw(self, win):
+		win.blit(self.image, self.rect)
+
+class PlayerSelectButton(pygame.sprite.Sprite):
+	def __init__(self, x, y, path_img):
+		super(PlayerSelectButton, self).__init__()
+		self.x = x
+		self.y = y
+
+		self.idle_list = []
+		self.walk_left = []
+		self.walk_right = []
+		self.attack_list = []
+		self.size = 24
+
+		for i in range(1,3):
+			image = pygame.image.load(f'{path_img}/PlayerIdle{i}.png')
+			image = pygame.transform.scale(image, (24, 24))
+			self.idle_list.append(image)
+		for i in range(1,6):
+			image = pygame.image.load(f'{path_img}/PlayerWalk{i}.png')
+			right = pygame.transform.scale(image, (24, 24))
+			left = pygame.transform.flip(right, True, False)
+			self.walk_right.append(right)
+			self.walk_left.append(left)
+		for i in range(1, 5):
+			image = pygame.image.load(f'{path_img}/PlayerAttack{i}.png')
+			image = pygame.transform.scale(image, (24, 24))
+			self.attack_list.append(image)
+
+		self.idle_index = 0
+		self.walk_index = 0
+		self.attack_index = 0
+
+		self.speed = 6
+
+		self.counter = 0
+		self.direction = 0
+		self.state_direction = 'right'
+
+		self.alive = True
+		self.attack = False
+		self.health = 100
+
+		self.image = self.idle_list[self.idle_index]
+		self.image = pygame.transform.scale(self.image, (24, 24))
+		self.rect = self.image.get_rect(center=(x, y))
+
+	def update_animation(self):
+		self.counter += 1
+		if self.counter % 7 == 0:
+			if self.attack:
+				self.attack_index += 1
+				if self.attack_index >= len(self.attack_list):
+					self.attack_index = 0
+					self.attack = False
+			if self.direction == 0:
+				self.idle_index = (self.idle_index + 1) % len(self.idle_list)			
+			if self.direction == -1 or self.direction == 1:
+				self.walk_index = (self.walk_index + 1) % len(self.walk_left)
+			self.counter = 0
+
+		if self.alive:
+			if self.attack:
+				self.image = self.attack_list[self.attack_index]
+				if self.state_direction != 'right': # add
+					self.image = pygame.transform.flip(self.image, True, False)
+			elif self.direction == 0:
+				self.image = self.idle_list[self.idle_index]
+				if self.state_direction != 'right':
+					self.image = pygame.transform.flip(self.image, True, False)
+			elif self.direction == -1:
+				self.image = self.walk_left[self.walk_index]
+			elif self.direction == 1:
+				self.image = self.walk_right[self.walk_index]
+
+
+	def update(self, moving_left, moving_right, moving_up, moving_down):
+		self.dx = 0
+		self.dy = 0
+
+		if moving_left:
+			self.dx = -self.speed
+			self.direction = -1
+			self.state_direction = 'left' # add 
+		if moving_right:
+			self.dx = self.speed
+			self.direction = 1
+			self.state_direction = 'right' # add
+		if (not moving_left and not moving_right):
+			self.direction = 0
+			self.walk_index = 0
+		if moving_up:
+			self.dy -= self.speed
+		if moving_down:
+			self.dy += self.speed
+
+		self.rect.x += self.dx
+		self.rect.y += self.dy
+
+		if self.rect.x > WIDTH:
+			self.rect.x -= WIDTH
+		if self.rect.x < 0:
+			self.rect.x += WIDTH
+		if self.rect.y > HEIGHT:
+			self.rect.y -= HEIGHT
+		if self.rect.y < 0:
+			self.rect.y += HEIGHT
 
 		self.update_animation()
 

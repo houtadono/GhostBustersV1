@@ -1,6 +1,6 @@
 import random
 import pygame
-from projectiles import Bullet
+from projectiles import Gun
 
 TILE_SIZE = 16
 
@@ -82,9 +82,8 @@ class Ghost(pygame.sprite.Sprite):
 			if self.health > 0 and (abs(p.rect.x - self.rect.x) <= 200):
 				x, y = self.rect.center
 				direction = self.dx
-				bullet = Bullet(x, y, direction, (160, 160, 160), 2, self.win)
+				bullet = Gun(x, y, direction, 2, self.win)
 				bullet_group.add(bullet)
-				bullet_fx.play()
 
 		if self.alive:
 			if self.on_death_bed:

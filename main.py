@@ -4,13 +4,14 @@ import pygame
 import os
 
 from world import World, load_level
-from player import Player, Warrior
+from player import Player, Warrior, PlayerSelectButton
 from enemies import Ghost
 from particles import Trail
-from projectiles import Bullet, Fireball, Grenade
+from projectiles import Gun, Fireball, Grenade, Sword
 from button import Button
 from texts import Text, Message, BlinkingText, MessageBox
 from time import time, sleep
+
 pygame.init()
 
 WIDTH, HEIGHT = 640, 384
@@ -29,6 +30,9 @@ BG2 = pygame.transform.scale(
 BG3 = pygame.transform.scale(
     pygame.image.load('assets/BG3.png'), (WIDTH, HEIGHT))
 MOON = pygame.transform.scale(pygame.image.load('assets/moon.png'), (300, 220))
+
+GREY_LAYER = pygame.Surface((35, 35), pygame.SRCALPHA)
+GREY_LAYER.fill((128, 128, 128, 200))
 
 # FONTS ***********************************************************************
 
@@ -50,7 +54,8 @@ g_key = Message(WIDTH//2 + 10, HEIGHT//2 - 5, 20,
                 "Press g key to throw grenade", instructions_font, (255, 255, 255), win)
 game_won_msg = Message(WIDTH//2 + 10, HEIGHT//2 - 5, 20,
                        "You have won the game", instructions_font, (255, 255, 255), win)
-
+paused_msg = Message(WIDTH//2 + 10, HEIGHT//4, 40,
+                       "Do you want to stop the game?", instructions_font, (255, 255, 255), win)
 loadMessage1_game = Message(WIDTH//2 + 70, HEIGHT//2 - 5, 20,
                             "Can't load the save game. Start a new game?", instructions_font, (255, 255, 255), win)
 loadMessage2_game = Message(WIDTH//2 + 70, HEIGHT//2 + 30,
@@ -83,12 +88,11 @@ load_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2, ButtonBG, 0.5, load, 10)
 # about_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 35, ButtonBG, 0.5, about, 10)
 controls_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG, 0.5, controls, 10)
 exit_btn = Button(WIDTH//2 - bwidth//4, HEIGHT // 2 + 105, ButtonBG, 0.5, exit, 10)
-main_menu_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 130, ButtonBG, 0.5, main_menu, 20)
+main_menu_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 140, ButtonBG, 0.5, main_menu, 20)
 
-red = Button(WIDTH//2 - bwidth//4, HEIGHT//2+35, ButtonBG,0.5, t.render('Red', font_color), 10)
-white = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG,0.5, t.render('White', font_color), 10)
-
-warrior = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG,0.5, t.render('Warrior', font_color), 10)
+red_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2+35, ButtonBG,0.5, t.render('Red', font_color), 10)
+white_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG,0.5, t.render('White', font_color), 10)
+warrior_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG,0.5, t.render('Warrior', font_color), 10)
 
 continue_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 40, ButtonBG, 0.5, contiune1, 10)
 save_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, save, 10)
@@ -133,7 +137,9 @@ COLS = 40
 SCROLL_THRES = 200
 MAX_LEVEL = 3
 
-level = 1
+level = 0
+points = 0
+pre_level = 0
 level_length = 0
 screen_scroll = 0
 bg_scroll = 0
@@ -164,15 +170,32 @@ def reset_level(level):
 def get_info_player(type_):
 	config = ConfigParser()
 	config.read(f'./Data/player.properties')
-	global p_reload_time, p_path_img, p_dame, p_class
+	global p_reload_time, p_reload_time2, p_path_img, p_class, p_weapon, img_skill, img_skill2
 	p_reload_time = float(config[type_]['reload_time'])
 	k = config[type_]['class']
-	if k == "Warrior":
+
+	k = config[type_]['weapon']
+	if k == 'Sword':
 		p_class = Warrior
-	else:
+		p_weapon = Sword
+	elif k=='Gun':
 		p_class = Player
+		p_weapon = Gun
+	elif k=='Fireball':
+		p_class = Player
+		p_weapon = Fireball
+
 	p_path_img = config[type_]['image_folder']
-	p_dame = float(config[type_]['dame'])
+	img_skill = pygame.image.load( f'%s' %(str(config[type_]['img_skill'])) )
+	img_skill = pygame.transform.scale(img_skill, (24, 24))
+	try:
+		img_skill2 = pygame.image.load(f'%s'%(str(config[type_]['img_skill2'])))
+		img_skill2 = pygame.transform.scale(img_skill2, (24, 24))
+		p_reload_time2 = float(config[type_]['reload_time2'])
+	except:
+		img_skill2 = None
+		p_reload_time2 = 0
+		pass
 
 def reset_player():
 	global p_path_img,p_type,p_class
@@ -181,84 +204,6 @@ def reset_player():
 	moving_left = False
 	moving_right = False
 	return p, moving_left, moving_right
-
-
-def load_screen():
-    win.fill((0, 0, 0))
-    for x in range(5):
-        win.blit(BG1, ((x*WIDTH) - bg_scroll * 0.6, 0))
-        win.blit(BG2, ((x*WIDTH) - bg_scroll * 0.7, 0))
-        win.blit(BG3, ((x*WIDTH) - bg_scroll * 0.8, 0))
-    win.blit(MOON, (-40, 150))
-    ghostbusters.update()
-    clock.tick(15)
-    pygame.display.update()
-
-def paused(pause):
-    load_screen()
-    continue_btn.draw(win)
-    global ok
-    if level != 1:
-        exit1_btn.draw(win)
-        save_btn.draw(win)
-        pygame.display.update()
-        while pause:
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        pause = False
-            if continue_btn.draw(win):
-                menu_click_fx.play()
-                pause = False
-            if exit1_btn.draw(win):
-                menu_click_fx.play()
-                ok = 1
-                pause = False
-            if save_btn.draw(win):
-                menu_click_fx.play()
-                data = {
-                    'grenades': p.grenades,
-                    'health': p.health,
-                    'level': level,
-                }
-                with open('text.txt', 'w') as f:
-                    json.dump(data, f)
-                ok = 1
-                pause = False
-
-    else:
-        exit2_btn.draw(win)
-        pygame.display.update()
-        while pause:
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:
-                        pause = False
-            if continue_btn.draw(win):
-                menu_click_fx.play()
-                pause = False
-            if exit2_btn.draw(win):
-                menu_click_fx.play()
-                ok = 1
-                pause = False
-        pygame.display.update()
-
-def load_game(s):
-    data = ""
-    for i in s.values():
-        data += str(i) + ","
-    return data[:len(data) - 1]
-
-def error_loadgame():
-    load_screen()
-    ok = True
-    while ok:
-        loadMessage1_game.update()
-        loadMessage2_game.update()
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_y: ok = False
 
 def load_data_continue_pre_game():
 	try:
@@ -275,15 +220,80 @@ def load_data_continue_pre_game():
 	except:
 		return False
 
+def draw_image_skill(win, delta_time):
+	global p_remain_reload, img_skill, img_skill2,p_remain_reload2, p_reload_time2, p_reload_time2
+	if p_remain_reload>0:
+		p_remain_reload -= delta_time
+		if p_remain_reload<0:
+			p_remain_reload = 0
+	
+	image_rect = img_skill.get_rect()
+	image_rect.center = (25, 70)
+	frame_size = (35, 35)
+	frame_rect = pygame.Rect(0, 0, *frame_size)
+	frame_rect.center = image_rect.center
+
+	if p_remain_reload == 0:
+		frame_color = (0, 0, 0)
+	else:
+		frame_color = (128,128,128)
+
+	copy = img_skill.copy()
+	x = 35*(1-p_remain_reload/p_reload_time)
+
+		# vẽ nền đỏ đằng sau
+	pygame.draw.rect(win, (255, 0, 0), frame_rect)
+		# lớp phủ đè lên img_skill
+	copy.blit(GREY_LAYER, (0, x,35,35))
+		# vẽ ra lớp phủ 
+	win.blit(copy, image_rect)
+		# vẽ khung
+	pygame.draw.rect(win, frame_color, frame_rect, 2)
+
+
+	# draw skill 2:
+	if img_skill2 == None:
+		return
+	
+	if p_remain_reload2>0:
+		p_remain_reload2 -= delta_time
+		if p_remain_reload2<0:
+			p_remain_reload2 = 0
+	
+	image_rect = img_skill2.get_rect()
+	image_rect.center = (65, 70)
+	frame_size = (35, 35)
+	frame_rect = pygame.Rect(0, 0, *frame_size)
+	frame_rect.center = image_rect.center
+
+	if p_remain_reload == 0:
+		frame_color = (0, 0, 0)
+	else:
+		frame_color = (128,128,128)
+
+	copy = img_skill2.copy()
+	x = 35*(1-p_remain_reload2/p_reload_time2)
+
+		# vẽ nền đỏ đằng sau
+	pygame.draw.rect(win, (255, 0, 0), frame_rect)
+		# lớp phủ đè lên img_skill2
+	copy.blit(GREY_LAYER, (0, x,35,35))
+		# vẽ ra lớp phủ 
+	win.blit(copy, image_rect)
+		# vẽ khung
+	pygame.draw.rect(win, frame_color, frame_rect, 2)
+
+	
 # player ...
-p_remain_reload = 0
-p_reload_time = 0
+p_remain_reload = p_remain_reload2 = 0
+p_reload_time = p_reload_time2 = 0
 p_path_img = None
 p_type = 'adminwhite'
-p_dame = 0
 p_class = None
+p_weapon = None
+img_skill = img_skill2 = None
 p, moving_left, moving_right = reset_player()
-
+moving_up = moving_down = False
 
 # MAIN GAME *******************************************************************
 
@@ -296,20 +306,20 @@ continue_game = False
 game_start = False
 
 select_player = False  # add
-
 game_won = False
+game_pause = False
 running = True
 
-p_image = pygame.transform.scale(pygame.image.load('Assets/Player/PlayerIdle1.png'), (32, 32))
-p_rect = p_image.get_rect(topleft=(210, 230))
-p_dx = 1
-p_dy = 1
-p_ctr = 1
-
-select_on_main = ['load','play','controls','exit']
-index_on_main = 0
+p_select = PlayerSelectButton(210, HEIGHT//2+50, f'Assets/Player')
+bullet_select = pygame.sprite.Group()
 
 while running:
+	buttons = []
+	if level != pre_level:
+		status = '|'.join([str(level),str(points),type(p_class).__name__])
+		print(status)
+		pre_level = level
+
 	win.fill((0, 0, 0))
 	for x in range(5):
 		win.blit(BG1, ((x*WIDTH) - bg_scroll * 0.6, 0))
@@ -327,22 +337,23 @@ while running:
 			if event.key == pygame.K_ESCAPE:
 				running = False
 
-		if event.type == pygame.KEYDOWN:
-			if not game_start:
-				if main_menu:
-					if event.key == pygame.K_UP:
-						index_on_main -= 1 
-						if index_on_main < 0:
-							index_on_main += len(select_on_main)
-						# p_rect.y -= 35
-					if event.key == pygame.K_DOWN:
-						index_on_main += 1
-						if index_on_main == len(select_on_main):
-							index_on_main -= len(select_on_main)
-						# p_rect.y += 35
-					
-				continue
+		if event.type == pygame.KEYDOWN and not game_start:
 
+			if event.key == pygame.K_LEFT:
+				moving_left = True
+			if event.key == pygame.K_RIGHT:
+				moving_right = True
+			if event.key == pygame.K_UP:
+				moving_up = True
+			if event.key == pygame.K_DOWN:
+				moving_down = True
+			if event.key == pygame.K_SPACE:
+				x, y = (p_select.rect.center)
+				bullet = Gun(x, y, 1 if p_select.state_direction == 'right' else -1, 1, win)
+				bullet_select.add(bullet)
+				p_select.attack = True
+
+		elif event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_LEFT:
 				moving_left = True
 			if event.key == pygame.K_RIGHT:
@@ -352,17 +363,24 @@ while running:
 					p.jump = True
 					p.above_ground = False
 					jump_fx.play()
-			if event.key == pygame.K_SPACE and p_remain_reload == 0:
-				x, y = p.rect.center
-				direction = 1 if p.state_direction == 'right' else -1  # add
-				if p_type.endswith('red'):
-					bullet = Fireball(x, y, direction, 1, win)
-				else:
-					bullet = Bullet(x, y, direction, (240, 240, 240), 1, win)
-				bullet_group.add(bullet)
-				bullet_fx.play()
-				p_remain_reload = p_reload_time
-				p.attack = True
+			if event.key == pygame.K_SPACE:
+				if p_remain_reload == 0 :
+					x, y = p.rect.center
+					direction = 1 if p.state_direction == 'right' else -1  # add
+
+					bullet = p_weapon(x, y, direction, 1, win)
+					bullet_group.add(bullet)
+
+					p_remain_reload = p_reload_time
+					p.attack = True
+				elif p_reload_time2 != 0 and p_remain_reload2 == 0 and p.attack_index < 4 and p.attack_index >0:
+					x, y = p.rect.center
+					direction = 1 if p.state_direction == 'right' else -1
+					bullet = p_weapon(x, y, direction, 1, win, False)
+					bullet_group.add(bullet)
+					p_remain_reload2 = p_reload_time2
+					p.attack2 = True
+					pass
 			if event.key == pygame.K_g:
 				if p.grenades:
 					p.grenades -= 1
@@ -370,8 +388,9 @@ while running:
 					                  1 if p.state_direction == 'right' else -1, win)
 					grenade_group.add(grenade)
 					grenade_throw_fx.play()
-			
 			if event.key == pygame.K_p: # press p to pause
+				game_pause = True
+				game_start = False
 				pass
 			
 			if event.key == pygame.K_q: # press q to quit
@@ -382,20 +401,32 @@ while running:
 				moving_left = False
 			if event.key == pygame.K_RIGHT:
 				moving_right = False
-	
-	if main_menu:
-		button_load = False
-		if play_btn.draw(win):
+			if event.key == pygame.K_UP:
+				moving_up = False
+			if event.key == pygame.K_DOWN:
+				moving_down = False
 
+	if not game_start:
+		trail_group.update()
+		p_select.update(moving_left, moving_right, moving_up, moving_down)
+		p_select.draw(win)
+		t = Trail(p_select.rect.center, (220, 220, 220), win)
+		trail_group.add(t)
+		bullet_select.update(0,None)
+	else:
+		p_select.kill()
+
+	if main_menu:
+		ghostbusters.update()
+		if play_btn.draw(win):
 			menu_click_fx.play()
 			# world_data, level_length, w = reset_level(level)
 			# p, moving_left, moving_right = reset_player()
 
 			select_player = True  # add
 			main_menu = False  # add
-
 		if os.path.exists(f'./Data/save_level'):
-			button_load = True
+			buttons.append(load_btn)
 			if load_btn.draw(win):
 				menu_click_fx.play()
 				check = load_data_continue_pre_game()
@@ -405,8 +436,6 @@ while running:
 					main_menu = False
 				else:
 					os.remove(f'./Data/save_level')
-				
-
 		# if about_btn.draw(win):
 		# 	menu_click_fx.play()
 		# 	about_page = True
@@ -420,48 +449,28 @@ while running:
 		if exit_btn.draw(win):
 			menu_click_fx.play()
 			running = False
-		
-		# vẽ player bên phải
-		ghostbusters.update()
-		trail_group.update()
-		p_rect.x += p_dx
-		p_ctr += p_dx
-		if p_ctr > 15 or p_ctr < -15:
-			p_dx *= -1
-
-		# min_p_rect_y = 230-35 if button_load else 230
-		# if p_rect.y < min_p_rect_y: p_rect.y = 230+35*2
-		# if p_rect.y > 300: p_rect.y = min_p_rect_y
-
-		if not button_load:
-			if 'load' in select_on_main:
-				select_on_main.remove('load')
-		else:
-			if 'load' not in select_on_main:
-				select_on_main = ['load'] + select_on_main
-		p_rect.y = 230 + 35* index_on_main
-		if button_load:
-			p_rect.y-=35
-
-		win.blit(p_image, p_rect)
-		t = Trail(p_rect.center, (220, 220, 220), win)
-		trail_group.add(t)
+	
+		buttons.append(play_btn)
+		buttons.append(controls_btn)
+		buttons.append(exit_btn)
 
 	elif select_player:
-		if red.draw(win):
+		if red_btn.draw(win):
 			game_start = True
 			p_type='adminred'
 
-		if white.draw(win):
+		if white_btn.draw(win):
 			game_start = True
+			p_type='adminwhite'
 
-		if warrior.draw(win):
+		if warrior_btn.draw(win):
 			game_start = True
 			p_type = 'warrior'
 
 		if game_start:
 			select_player = False
 			menu_click_fx.play()
+			level += 1
 			world_data, level_length, w = reset_level(level)
 			last_time = time() # add
 			p, moving_left, moving_right = reset_player()
@@ -471,19 +480,11 @@ while running:
 			menu_click_fx.play()
 			select_player = False
 			main_menu = True
-			
-		trail_group.update()
-		p_rect.x += p_dx
-		p_ctr += p_dx
-		if p_ctr > 15 or p_ctr < -15:
-			p_dx *= -1
-		min_p_rect_y = 230-35 if button_load else 230
-		if p_rect.y < min_p_rect_y: p_rect.y = 230+35*2
-		if p_rect.y > 300: p_rect.y = min_p_rect_y
-		win.blit(p_image, p_rect)
-		t = Trail(p_rect.center, (220, 220, 220), win)
-		trail_group.add(t)
-
+		buttons.append(red_btn)
+		buttons.append(white_btn)
+		buttons.append(warrior_btn)
+		buttons.append(main_menu_btn)
+		
 	elif about_page:
 		MessageBox(win, about_font, 'GhostBusters', info)
 		if main_menu_btn.draw(win):
@@ -502,6 +503,7 @@ while running:
 			menu_click_fx.play()
 			controls_page = False
 			main_menu = True
+		buttons.append(main_menu_btn)
 
 	elif exit_page:
 		pass
@@ -513,7 +515,14 @@ while running:
 			controls_page = False
 			main_menu = True
 			level = 1
-		
+	elif game_pause:
+		paused_msg.update()
+		if load_btn.draw(win):
+			game_pause = False
+			game_start = True
+			last_time = time() 
+		buttons.append(load_btn)
+		pass	
 	elif game_start:
 		current_time = time() 
 		delta_time = current_time - last_time # add
@@ -598,7 +607,9 @@ while running:
 			if enemy and bullet.type == 1:
 				if not enemy[0].hit:
 					enemy[0].hit = True
-					enemy[0].health -= p_dame # add
+					enemy[0].health -= bullet.dame # add
+					if hasattr(bullet,'skill1') and bullet.skill1 == False:
+						p.health += (100-p.health)//20
 				bullet.kill()
 			if bullet.rect.colliderect(p):
 				if bullet.type == 2:
@@ -622,39 +633,10 @@ while running:
 			pygame.draw.circle(win, (255, 50, 50), (20 + 15*i, 40), 4)
 			pygame.draw.circle(win, (0, 0, 0), (20 + 15*i, 40), 1)
 		
-		# add
-		# reload skill
-		if p_remain_reload>0:
-			p_remain_reload -= delta_time
-			if p_remain_reload<0:
-				p_remain_reload = 0
-		
-		image = pygame.image.load(f'./Assets/Fireball.png')
-		image_rect = image.get_rect()
-		image_rect.center = (25, 70)
-		frame_size = (35, 35)
-		frame_rect = pygame.Rect(0, 0, *frame_size)
-		frame_rect.center = image_rect.center
-		if p_remain_reload == 0:
-			frame_color = (0, 0, 0)
-		else:
-			frame_color = (128,128,128)
-
-		copy = image.copy()
-		grey_layer = pygame.Surface((35, 35), pygame.SRCALPHA)
-		grey_layer.fill((128, 128, 128, 200))
-		x = 35*(1-p_remain_reload/p_reload_time)
-		pygame.draw.rect(win, (255, 0, 0), frame_rect)
-		copy.blit(grey_layer, (0, x,35,35))
-		win.blit(copy, image_rect)
-		pygame.draw.rect(win, frame_color, frame_rect, 2)
-		# add
-
+		draw_image_skill(win,delta_time)
 
 		if p.health <= 0:
-			world_data, level_length, w = reset_level(level)
-			p, moving_left, moving_right = reset_player() 
-
+			level -= 1 
 			screen_scroll = 0
 			bg_scroll = 0
 
@@ -663,6 +645,18 @@ while running:
 			controls_page = False
 			game_start = False
 		last_time = time()
+
+	if not game_start:
+		check = False
+		for bullet in bullet_select:
+			for bt in buttons:
+				if bt.rect.collidepoint(bullet.rect.x, bullet.rect.y):
+					bt.shot = True
+					check = True
+					break
+			if check:
+				bullet_select = pygame.sprite.Group()
+				break
 
 	pygame.draw.rect(win, (255, 255,255), (0, 0, WIDTH, HEIGHT), 4, border_radius=10)
 	clock.tick(FPS)

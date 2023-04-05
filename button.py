@@ -20,10 +20,13 @@ class Button():
 			self.yoff = self.text.get_height() // 2
 
 		self.clicked = False
+		self.shot = False
 
 	def draw(self, surface):
 		action = False
-		
+		if self.shot:
+			self.shot =False
+			return True
 		#get mouse position
 		pos = pygame.mouse.get_pos()
 		current_time = pygame.time.get_ticks()
@@ -43,4 +46,4 @@ class Button():
 		if self.text:
 			self.image.blit(self.text, (self.width//2 - self.xoff, self.height//2 - self.yoff))
 
-		return action
+		return action 

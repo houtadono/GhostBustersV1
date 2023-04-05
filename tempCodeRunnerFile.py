@@ -1,1 +1,0 @@
-p, moving_left, moving_right = reset_player()

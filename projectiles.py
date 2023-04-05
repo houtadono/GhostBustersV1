@@ -5,24 +5,40 @@ from particles import Explosion
 WIDTH, HEIGHT = 640, 384
 
 pygame.mixer.init()
-grenade_blast_fx = pygame.mixer.Sound('Sounds/grenade blast.wav')
+grenade_blast_fx = pygame.mixer.Sound(f'Sounds/grenade blast.wav')
 grenade_blast_fx.set_volume(0.6)
 
-class Bullet(pygame.sprite.Sprite):
-	def __init__(self, x, y, direction, color, type_, win):
-		super(Bullet, self).__init__()
+gun_fx =  pygame.mixer.Sound(f'Sounds/bullet.wav')
+gun_fx.set_volume(0.6)
+sword1_fx = pygame.mixer.Sound(f'Sounds/sword1.wav')
+sword1_fx.set_volume(0.6)
+sword2_fx = pygame.mixer.Sound(f'Sounds/sword2.mp3')
+sword2_fx.set_volume(0.6)
+fireball_fx = pygame.mixer.Sound(f'Sounds/fireball.ogg')
+fireball_fx.set_volume(0.6)
+
+class Gun(pygame.sprite.Sprite):
+	def __init__(self, x, y, direction, type_, win, ):
+		super(Gun, self).__init__()
 
 		self.x = x
 		self.y = y
 		self.direction = direction
-		self.color = color
+		self.color = (240, 240, 240)
 		self.type = type_
 		self.win = win
 
+		if self.type == 2:
+			self.color = (160, 160, 160)
+
+		self.dame = 21
+		self.crit = 1 # add after
+
 		self.speed = 10
 		self.radius = 4
-		
+		gun_fx.play()
 		self.rect = pygame.draw.circle(self.win, self.color, (self.x, self.y), self.radius)
+		self.start_x = x
 
 	def update(self, screen_scroll, world):
 		if self.direction == -1:
@@ -30,16 +46,18 @@ class Bullet(pygame.sprite.Sprite):
 		if self.direction == 0 or self.direction == 1:
 			self.x += self.speed + screen_scroll
 
-		for tile in world.ground_list:
-			if tile[1].collidepoint(self.x, self.y):
-				self.kill()
-		for tile in world.rock_list:
-			if tile[1].collidepoint(self.x, self.y):
-				self.kill()
-
+		if world != None:
+			for tile in world.ground_list:
+				if tile[1].collidepoint(self.x, self.y):
+					self.kill()
+			for tile in world.rock_list:
+				if tile[1].collidepoint(self.x, self.y):
+					self.kill()
+		if abs(self.start_x - self.x) > WIDTH:
+			self.kill()
 		self.rect = pygame.draw.circle(self.win, self.color, (self.x, self.y), self.radius)
 
-class Fireball(pygame.sprite.Sprite): # add
+class Fireball(pygame.sprite.Sprite): 
 	def __init__(self, x, y, direction, type_, win) :
 		super(Fireball, self).__init__()
 		self.direction = direction
@@ -51,8 +69,11 @@ class Fireball(pygame.sprite.Sprite): # add
 		space_x = self.rect.width//2 * direction
 		self.x = x  + space_x
 		self.y = y 
+		self.dame = 34
+		self.crit = 10
 		if self.direction == -1: 
 			self.image = pygame.transform.flip(self.image, True, False) 
+		fireball_fx.play()
 		self.time_start = pygame.time.get_ticks()
 
 	def update(self, screen_scroll, world):
@@ -64,13 +85,58 @@ class Fireball(pygame.sprite.Sprite): # add
 		self.rect.x = self.x
 		for tile in world.ground_list:
 			if tile[1].collidepoint(self.rect.x, self.rect.y):
+				fireball_fx.stop()
 				self.kill()
 		for tile in world.rock_list:
 			if tile[1].collidepoint(self.rect.x, self.rect.y):
+				fireball_fx.stop()
 				self.kill() 
 		if pygame.time.get_ticks() - self.time_start >= 950:
+			fireball_fx.stop()
 			self.kill()
 		self.win.blit(self.image, (self.x -self.rect.width//2, self.y-self.rect.height//2))
+		
+class Sword(pygame.sprite.Sprite):
+	def __init__(self, x, y, direction, type_, win, skill1=True):
+		super(Sword, self).__init__()
+
+		self.x = x
+		self.y = y
+		self.direction = direction
+		self.color = (240, 240, 240,0)
+		self.type = type_
+		self.win = win
+		self.dame = 50
+		self.speed = 2
+		self.radius = 4
+		self.time_start = pygame.time.get_ticks()
+		self.rect = pygame.draw.circle(self.win, self.color, (self.x, self.y), self.radius)
+		self.skill1 = skill1
+		if skill1:
+			sword1_fx.play()
+		else:
+			sword2_fx.play()
+
+	def update(self, screen_scroll, world):
+		if pygame.time.get_ticks() - self.time_start <= 400 and not self.skill1:
+			return
+		# if not self.skill1:
+		# 	print(pygame.time.get_ticks() - self.time_start)
+		if self.direction == -1:
+			self.x -= self.speed + screen_scroll
+		if self.direction == 0 or self.direction == 1:
+			self.x += self.speed + screen_scroll
+
+		for tile in world.ground_list:
+			if tile[1].collidepoint(self.x, self.y):
+				self.kill()
+		for tile in world.rock_list:
+			if tile[1].collidepoint(self.x, self.y):
+				self.kill()
+		time_step = 100 if self.skill1 else 421
+		if pygame.time.get_ticks() - self.time_start >= time_step:
+			self.kill()
+		self.rect = pygame.draw.circle(self.win, self.color, (self.x, self.y), self.radius)
 
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction, win):
