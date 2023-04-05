@@ -1,10 +1,4 @@
-#### Reference from pyGuru
-
-# GhostBusters
-
-[![forthebadge](https://forthebadge.com/images/badges/built-with-love.svg)](https://forthebadge.com)
-[![forthebadge](https://forthebadge.com/images/badges/built-with-swag.svg)](https://forthebadge.com)
-[![forthebadge](https://forthebadge.com/images/badges/made-with-python.svg)](https://forthebadge.com)
+# GhostBusters Reference from pyGuru
 
 GhostBusters is a small platformer game made with pygame. The game uses tiles based physics along with scrolling and parallax animations.
 
