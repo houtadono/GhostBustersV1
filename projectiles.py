@@ -2,20 +2,26 @@ import math
 import pygame
 from particles import Explosion
 
-WIDTH, HEIGHT = 640, 384
+WIDTH, HEIGHT =640, 484
 
 pygame.mixer.init()
-grenade_blast_fx = pygame.mixer.Sound(f'Sounds/grenade blast.wav')
+grenade_blast_fx = pygame.mixer.Sound(f'./Sounds/grenade blast.wav')
 grenade_blast_fx.set_volume(0.6)
 
-gun_fx =  pygame.mixer.Sound(f'Sounds/bullet.wav')
+gun_fx =  pygame.mixer.Sound(f'./Sounds/bullet.wav')
 gun_fx.set_volume(0.6)
-sword1_fx = pygame.mixer.Sound(f'Sounds/sword1.wav')
+sword1_fx = pygame.mixer.Sound(f'./Sounds/sword1.wav')
 sword1_fx.set_volume(0.6)
-sword2_fx = pygame.mixer.Sound(f'Sounds/sword2.mp3')
+sword2_fx = pygame.mixer.Sound(f'./Sounds/sword2.mp3')
 sword2_fx.set_volume(0.6)
-fireball_fx = pygame.mixer.Sound(f'Sounds/fireball.ogg')
+fireball_fx = pygame.mixer.Sound(f'./Sounds/fireball.ogg')
 fireball_fx.set_volume(0.6)
+knight_fx = pygame.mixer.Sound(f'./Sounds/knight.mp3')
+knight_fx.set_volume(0.6)
+arrow1_fx = pygame.mixer.Sound(f'./Sounds/arrow1.ogg')
+arrow1_fx.set_volume(0.6)
+arrow2_fx = pygame.mixer.Sound(f'./Sounds/arrow2.mp3')
+arrow2_fx.set_volume(0.6)
 
 class Gun(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction, type_, win, ):
@@ -137,6 +143,75 @@ class Sword(pygame.sprite.Sprite):
 		if pygame.time.get_ticks() - self.time_start >= time_step:
 			self.kill()
 		self.rect = pygame.draw.circle(self.win, self.color, (self.x, self.y), self.radius)
+
+class Lance(pygame.sprite.Sprite):
+	def __init__(self, x, y, direction, type_, win_, p):
+		super(Lance, self).__init__()
+		self.p = p
+		self.color =(0,0,0,0)
+		self.radius = 4
+		self.win = win_
+		self.dame = 34
+		self.type = type_
+		self.rect = p.rect
+		if p.state_direction == 'right':
+			self.rect = pygame.Rect(p.rect.right-2,p.rect.centery-2, 4, 4)
+		else:
+			self.rect = pygame.Rect(p.rect.left-2, p.rect.centery-2, 4, 4)
+		knight_fx.play()
+
+	def update(self, screen_scroll, world):
+		if self.p.attack == False:
+			self.kill()
+		if self.p.state_direction == 'right':
+			self.rect = pygame.Rect(self.p.rect.right-2, self.p.rect.centery-2, 4, 4)
+		else:
+			self.rect = pygame.Rect(self.p.rect.left-2, self.p.rect.centery-2, 4, 4)
+
+class Arrow(pygame.sprite.Sprite): 
+	def __init__(self, x, y, direction, type_, win, p) :
+		super(Arrow, self).__init__()
+		self.type = type_
+		self.speed = 7
+		self.win = win
+		self.image = pygame.image.load(f'Assets/Arrow.png')
+		self.rect = self.image.get_rect(center=(x, y))
+		self.dame = 50
+		self.crit = 10
+		self.p = p
+		self.start = False
+		arrow1_fx.play()
+		
+
+	def update(self, screen_scroll, world):
+		if self.p.attack_index == 5 and self.start == False: 
+			self.start = True
+			self.direction = 1 if self.p.state_direction == 'right' else -1 
+			x,y = self.p.rect.center
+			self.rect = self.image.get_rect(center=(x, y))
+			if self.direction == -1: 
+				self.image = pygame.transform.flip(self.image, True, False) 
+			self.x = x  + self.rect.width//2 * self.direction
+			self.y = y
+			arrow2_fx.play()
+		if self.start == False:
+			return
+
+		if self.direction == -1:
+			self.x -= self.speed + screen_scroll
+			
+		if self.direction == 0 or self.direction == 1:
+			self.x += self.speed + screen_scroll
+
+		self.rect.x = self.x
+		for tile in world.ground_list:
+			if tile[1].collidepoint(self.rect.x, self.rect.y):
+				self.kill()
+		for tile in world.rock_list:
+			if tile[1].collidepoint(self.rect.x, self.rect.y):
+				self.kill() 
+
+		self.win.blit(self.image, (self.x -self.rect.width//2, self.y-self.rect.height//2))
 
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self, x, y, direction, win):

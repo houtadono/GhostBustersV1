@@ -2,19 +2,21 @@ from configparser import ConfigParser
 import json
 import pygame
 import os
+import pickle
+import datetime
 
 from world import World, load_level
-from player import Player, Warrior, PlayerSelectButton
+from player import Player, Warrior,Knight, PlayerSelectButton, Archer
 from enemies import Ghost
 from particles import Trail
-from projectiles import Gun, Fireball, Grenade, Sword
+from projectiles import Gun, Fireball, Grenade, Sword, Lance, Arrow
 from button import Button
 from texts import Text, Message, BlinkingText, MessageBox
 from time import time, sleep
 
 pygame.init()
 
-WIDTH, HEIGHT = 640, 384
+WIDTH, HEIGHT =640, 484
 win = pygame.display.set_mode((WIDTH, HEIGHT), pygame.NOFRAME)
 TILE_SIZE = 16
 
@@ -38,7 +40,7 @@ GREY_LAYER.fill((128, 128, 128, 200))
 
 title_font = "Fonts/Aladin-Regular.ttf"
 instructions_font = 'Fonts/BubblegumSans-Regular.ttf'
-# about_font = 'Fonts/DalelandsUncialBold-82zA.ttf'
+about_font = 'Fonts/DalelandsUncialBold-82zA.ttf'
 
 ghostbusters = Message(WIDTH//2 + 50, HEIGHT//2 - 90, 90,
                        "GhostBusters", title_font, (255, 255, 255), win)
@@ -56,10 +58,9 @@ game_won_msg = Message(WIDTH//2 + 10, HEIGHT//2 - 5, 20,
                        "You have won the game", instructions_font, (255, 255, 255), win)
 paused_msg = Message(WIDTH//2 + 10, HEIGHT//4, 40,
                        "Do you want to stop the game?", instructions_font, (255, 255, 255), win)
-loadMessage1_game = Message(WIDTH//2 + 70, HEIGHT//2 - 5, 20,
-                            "Can't load the save game. Start a new game?", instructions_font, (255, 255, 255), win)
-loadMessage2_game = Message(WIDTH//2 + 70, HEIGHT//2 + 30,
-                            20, "Y for yes", instructions_font, (255, 255, 255), win)
+
+status_msg = Message(WIDTH//2 + 10, HEIGHT//4 + 30, 20,
+                       "Do you want to stop the game?", instructions_font, (255, 255, 255), win)
 
 
 t = Text(instructions_font, 18)
@@ -73,8 +74,9 @@ main_menu = t.render('Main Menu', font_color)
 
 save = t.render('Save', font_color)
 contiune1 = t.render('Contiune', font_color)
+quit1 = t.render('Quit', font_color)
 
-about_font = pygame.font.SysFont('Times New Roman', 20)
+about_font = pygame.font.SysFont('Arial', 18)
 with open('Data/about.txt') as f:
 	info = f.read().replace('\n', ' ')
 
@@ -95,7 +97,8 @@ white_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG,0.5, t.render(
 warrior_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG,0.5, t.render('Warrior', font_color), 10)
 
 continue_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 40, ButtonBG, 0.5, contiune1, 10)
-save_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, save, 10)
+quit_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, quit1, 10)
+
 exit1_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 110, ButtonBG, 0.5, exit, 10)
 exit2_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, exit, 10)
 
@@ -103,7 +106,7 @@ exit2_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, ex
 
 pygame.mixer.music.load('Sounds/mixkit-complex-desire-1093.mp3')
 pygame.mixer.music.play(loops=-1)
-pygame.mixer.music.set_volume(0)
+pygame.mixer.music.set_volume(0.6)
 
 diamond_fx = pygame.mixer.Sound('Sounds/point.mp3')
 diamond_fx.set_volume(0.6)
@@ -138,8 +141,7 @@ SCROLL_THRES = 200
 MAX_LEVEL = 3
 
 level = 0
-points = 0
-pre_level = 0
+score = 0
 level_length = 0
 screen_scroll = 0
 bg_scroll = 0
@@ -170,7 +172,7 @@ def reset_level(level):
 def get_info_player(type_):
 	config = ConfigParser()
 	config.read(f'./Data/player.properties')
-	global p_reload_time, p_reload_time2, p_path_img, p_class, p_weapon, img_skill, img_skill2
+	global p_reload_time, p_reload_time2, p_path_img, p_class, p_weapon, img_skill, img_skill2, img_avt
 	p_reload_time = float(config[type_]['reload_time'])
 	k = config[type_]['class']
 
@@ -184,10 +186,21 @@ def get_info_player(type_):
 	elif k=='Fireball':
 		p_class = Player
 		p_weapon = Fireball
+	elif k=='Lance':
+		p_class = Knight
+		p_weapon = Lance
+	elif k=='Arrow':
+		p_class = Archer
+		p_weapon = Arrow
+
+	img_avt = pygame.image.load( f'%s' %(str(config[type_]['img_avt'])) )
+	img_skill = pygame.transform.scale(img_avt, (42, 42)) 
 
 	p_path_img = config[type_]['image_folder']
 	img_skill = pygame.image.load( f'%s' %(str(config[type_]['img_skill'])) )
 	img_skill = pygame.transform.scale(img_skill, (24, 24))
+	if k=='Lance':
+		img_skill = pygame.transform.scale(img_skill, (30, 30))
 	try:
 		img_skill2 = pygame.image.load(f'%s'%(str(config[type_]['img_skill2'])))
 		img_skill2 = pygame.transform.scale(img_skill2, (24, 24))
@@ -205,24 +218,29 @@ def reset_player():
 	moving_right = False
 	return p, moving_left, moving_right
 
+def save_data_game():
+	with open("./Data/save_game", "wb") as f:
+		pickle.dump(status, f)
+	pass
+
 def load_data_continue_pre_game():
 	try:
-		global level, p_type, p_path_img, p
-		with open(f'./Data/save_level') as f :
-			p_type_new = f.readline()[:-1] 
-			level, health, grenades, scoures = map(int,f.readline().split())
-		if p_type_new != p_type:
-			p_type = p_type_new
-			p = reset_player()[0]
-		p.health = health
-		p.grenades = grenades
+		global level, p_type, p_path_img, p, status, score
+		with open("./Data/save_game", "rb") as f:
+			status = pickle.load(f)
+		p_type = str(status['character']).lower()
+		p = reset_player()[0]
+		p.health = status['health']
+		p.grenades = status['grenades']
+		level = status['level']
+		score = status['score']
 		return True
 	except:
 		return False
 
 def draw_image_skill(win, delta_time):
 	global p_remain_reload, img_skill, img_skill2,p_remain_reload2, p_reload_time2, p_reload_time2
-	if p_remain_reload>0:
+	if p_remain_reload>0 and p.attack == False:
 		p_remain_reload -= delta_time
 		if p_remain_reload<0:
 			p_remain_reload = 0
@@ -255,7 +273,7 @@ def draw_image_skill(win, delta_time):
 	if img_skill2 == None:
 		return
 	
-	if p_remain_reload2>0:
+	if p_remain_reload2>0 and p.attack2 == False:
 		p_remain_reload2 -= delta_time
 		if p_remain_reload2<0:
 			p_remain_reload2 = 0
@@ -313,12 +331,18 @@ running = True
 p_select = PlayerSelectButton(210, HEIGHT//2+50, f'Assets/Player')
 bullet_select = pygame.sprite.Group()
 
+status = {
+	'character': p_type.title(),
+	'level' : level,
+	'score': score,
+	'time_play': 0,
+	'die' : 0,
+	'grenades': p.grenades,
+	'health': p.health
+}
+status_c = status.copy()
 while running:
 	buttons = []
-	if level != pre_level:
-		status = '|'.join([str(level),str(points),type(p_class).__name__])
-		print(status)
-		pre_level = level
 
 	win.fill((0, 0, 0))
 	for x in range(5):
@@ -331,10 +355,15 @@ while running:
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
+			if status != status_c:
+				save_data_game()
 			running = False
 
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_ESCAPE:
+				print(1)
+				if status != status_c:
+					save_data_game()
 				running = False
 
 		if event.type == pygame.KEYDOWN and not game_start:
@@ -364,15 +393,17 @@ while running:
 					p.above_ground = False
 					jump_fx.play()
 			if event.key == pygame.K_SPACE:
-				if p_remain_reload == 0 :
+				if p_remain_reload == 0:
 					x, y = p.rect.center
 					direction = 1 if p.state_direction == 'right' else -1  # add
-
-					bullet = p_weapon(x, y, direction, 1, win)
+					try:
+						bullet = p_weapon(x, y, direction, 1, win)
+					except:
+						bullet = p_weapon(x, y, direction, 1,win,p)
 					bullet_group.add(bullet)
-
 					p_remain_reload = p_reload_time
 					p.attack = True
+
 				elif p_reload_time2 != 0 and p_remain_reload2 == 0 and p.attack_index < 4 and p.attack_index >0:
 					x, y = p.rect.center
 					direction = 1 if p.state_direction == 'right' else -1
@@ -391,10 +422,16 @@ while running:
 			if event.key == pygame.K_p: # press p to pause
 				game_pause = True
 				game_start = False
+				p_select.rect.x = 300
+				pause_time = pygame.time.get_ticks()
 				pass
 			
-			if event.key == pygame.K_q: # press q to quit
-				pass 
+		if event.type == pygame.KEYDOWN and event.key == pygame.K_q and (game_start or game_pause): # press q to quit
+			main_menu = True
+			game_pause = False
+			game_start = False
+			save_data_game()
+			pass 
 
 		if event.type == pygame.KEYUP:
 			if event.key == pygame.K_LEFT:
@@ -420,26 +457,26 @@ while running:
 		ghostbusters.update()
 		if play_btn.draw(win):
 			menu_click_fx.play()
-			# world_data, level_length, w = reset_level(level)
-			# p, moving_left, moving_right = reset_player()
-
 			select_player = True  # add
 			main_menu = False  # add
-		if os.path.exists(f'./Data/save_level'):
+
+		if os.path.exists(f'./Data/save_game'):
 			buttons.append(load_btn)
 			if load_btn.draw(win):
 				menu_click_fx.play()
 				check = load_data_continue_pre_game()
-				if check:
-					last_time = time() # add
-					game_start = True
-					main_menu = False
-				else:
-					os.remove(f'./Data/save_level')
-		# if about_btn.draw(win):
-		# 	menu_click_fx.play()
-		# 	about_page = True
-		# 	main_menu = False
+				try:
+					if check:
+						last_time = time() # add
+						world_data, level_length, w = reset_level(level)
+						game_start = True
+						main_menu = False
+						start_time = pygame.time.get_ticks() - status['time_play']*1000
+					else:
+						os.remove(f'./Data/save_game')
+				except:
+					os.remove(f'./Data/save_game')
+
 
 		if controls_btn.draw(win):
 			menu_click_fx.play()
@@ -473,8 +510,11 @@ while running:
 			level += 1
 			world_data, level_length, w = reset_level(level)
 			last_time = time() # add
+			start_time = pygame.time.get_ticks()
 			p, moving_left, moving_right = reset_player()
 			main_menu = False
+			status['character'] =  p_type.title()
+			status['level'] = level
 
 		if main_menu_btn.draw(win):
 			menu_click_fx.play()
@@ -515,14 +555,28 @@ while running:
 			controls_page = False
 			main_menu = True
 			level = 1
+	
 	elif game_pause:
 		paused_msg.update()
-		if load_btn.draw(win):
+		status_text = str(status).replace(',',"\n").replace('}','').replace('{','').replace("'",'').title()
+		MessageBox(win, about_font,"Status", status_text, 200,100,100,265)
+		status_msg.update(text="Hello\nabc")
+		if continue_btn.draw(win):
 			game_pause = False
 			game_start = True
 			last_time = time() 
-		buttons.append(load_btn)
+			start_time += pygame.time.get_ticks() - pause_time 
+		if quit_btn.draw(win):
+			game_pause = False
+			main_menu = True
+			game_start = False
+			last_time = time() 
+			start_time += pygame.time.get_ticks() - pause_time 
+
+		buttons.append(continue_btn)
+		buttons.append(quit_btn)
 		pass	
+	
 	elif game_start:
 		current_time = time() 
 		delta_time = current_time - last_time # add
@@ -570,24 +624,26 @@ while running:
 
 		if pygame.sprite.spritecollide(p, water_group, False):
 			p.health = 0
-			level = 1
 
 		if pygame.sprite.spritecollide(p, diamond_group, True):
 			diamond_fx.play()
+			score += 100
 			pass
 
 		if pygame.sprite.spritecollide(p, exit_group, False):
 			next_level_fx.play()
 			level += 1
 			if level <= MAX_LEVEL:
-				health = p.health
-
 				world_data, level_length, w = reset_level(level)
-				p, moving_left, moving_right = reset_player() 
-				p.health = health
-
+				p.revival(250, 50, p.health)
+				p.grenades += 1
 				screen_scroll = 0
 				bg_scroll = 0
+				status['level'] = level
+				status['score'] = score
+				status['grenades'] = p.grenades
+				status['health'] = p.health
+				print("Pass level", status)
 			else:
 				game_won = True
 
@@ -601,50 +657,84 @@ while running:
 				if p.health > 100:
 					p.health = 100
 
-
 		for bullet in bullet_group:
 			enemy =  pygame.sprite.spritecollide(bullet, enemy_group, False)
+
 			if enemy and bullet.type == 1:
-				if not enemy[0].hit:
+				if enemy[0].on_death_bed == False:
 					enemy[0].hit = True
-					enemy[0].health -= bullet.dame # add
-					if hasattr(bullet,'skill1') and bullet.skill1 == False:
+					enemy[0].get_hit(bullet.dame)
+					if enemy[0].health <= 0 and enemy[0].on_death_bed == False :
+						score += 300
+						enemy[0].on_death_bed = True
+					if hasattr(bullet,'skill1') and bullet.skill1 == False :
 						p.health += (100-p.health)//20
 				bullet.kill()
+
 			if bullet.rect.colliderect(p):
 				if bullet.type == 2:
 					if not p.hit:
 						p.hit = True
-						p.health -= 20
+						if p_class == Knight:
+							p.health -= 10
+						else:
+							p.health -= 20
 						print(p.health)
 					bullet.kill()
 
 		# drawing variables *******************************************************
+		
+		pygame.draw.rect(win, (255,255,255) , (6, 6, 40, 40), border_radius=5)
+		win.blit(img_avt,(12, 8, 42, 42))
+
+		health_font = pygame.font.Font(None, 26)
+		health_text = health_font.render(str(p.health), True, (0, 0, 255))
+		pygame.draw.rect(win, (128,128,128) , (49, 8, 100, 20), border_radius=5)
 
 		if p.alive:
 			color = (0, 255, 0)
 			if p.health <= 40:
 				color = (255, 0, 0)
-			pygame.draw.rect(win, color, (6, 8, p.health, 20), border_radius=10)
-		pygame.draw.rect(win, (255, 255, 255), (6, 8, 100, 20), 2, border_radius=10)
+			pygame.draw.rect(win, color, (49, 8, p.health, 20), border_radius=5)
+		pygame.draw.rect(win, (255, 255, 255), (49, 8, 100, 20), 2, border_radius=5)
+
+		win.blit(health_text, (50 - health_text.get_width()/2 + 49, 10))
 
 		for i in range(p.grenades):
-			pygame.draw.circle(win, (200, 200, 200), (20 + 15*i, 40), 5)
-			pygame.draw.circle(win, (255, 50, 50), (20 + 15*i, 40), 4)
-			pygame.draw.circle(win, (0, 0, 0), (20 + 15*i, 40), 1)
+			pygame.draw.circle(win, (200, 200, 200), (20 + 15*i + 49, 40), 5)
+			pygame.draw.circle(win, (255, 50, 50), (20 + 15*i + 49, 40), 4)
+			pygame.draw.circle(win, (0, 0, 0), (20 + 15*i + 49, 40), 1)
 		
 		draw_image_skill(win,delta_time)
 
 		if p.health <= 0:
-			level -= 1 
 			screen_scroll = 0
 			bg_scroll = 0
+			world_data, level_length, w = reset_level(level)
+			p.revival(250, 50)
+			score = status['score']
+			status['health'] = p.health
+			status['die'] += 1
+			print("Die",status)
 
-			main_menu = True
-			about_page = False
-			controls_page = False
-			game_start = False
 		last_time = time()
+
+			# draw die 
+		text = pygame.font.Font(None, 36).render(\
+			f"Die: {status['die']}", True, (255, 0, 0))
+		text_rect = text.get_rect(center=(WIDTH - text.get_width(), 20))
+		win.blit(text, text_rect)
+			# draw time
+		status['time_play'] = time_play = (pygame.time.get_ticks() - start_time)// 1000
+		text = pygame.font.Font(None, 36).render(\
+			f"{ datetime.timedelta(seconds= time_play)}", True, (255, 255, 255))
+		text_rect = text.get_rect(center=(WIDTH//2, 20))
+		win.blit(text, text_rect)
+			# draw score
+		text = pygame.font.Font(None, 36).render(\
+			f"Score: {score}", True, (255, 255, 255))
+		text_rect = text.get_rect(center=(70, HEIGHT - text.get_height()) )
+		win.blit(text, text_rect)
 
 	if not game_start:
 		check = False
@@ -659,7 +749,7 @@ while running:
 				break
 
 	pygame.draw.rect(win, (255, 255,255), (0, 0, WIDTH, HEIGHT), 4, border_radius=10)
-	clock.tick(FPS)
+	clock.tick(FPS)/1000.0
 	pygame.display.update()
 
 pygame.quit()

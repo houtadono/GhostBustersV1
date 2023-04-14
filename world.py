@@ -3,7 +3,7 @@ import pygame
 
 from enemies import Ghost
 
-NUM_TILES = 60
+NUM_TILES = 104
 TILE_SIZE = 16
 
 img_list = []
@@ -31,18 +31,27 @@ class World:
 
 					if tile in (0, 1, 2, 3, 4, 5, 6, 11):
 						self.ground_list.append(tile_data)
+					
+					if tile in range (61, 66) or tile in range (68, 74) or tile == 75:
+						self.ground_list.append(tile_data)
 
-					if tile in (7, 14, 18, 19, 20, 21, 25, 26, 27, 28, 32, 33, 34, 35, 42, 43, 44, 45):
+					if tile in (7, 14, 18, 19, 20, 21, 25, 26, 27, 28, 32, 33, 34, 35, 42, 43, 44, 45, 51, 67):
 						self.rock_list.append(tile_data)
 
-					if tile in (8, 9, 10, 13, 15, 16, 17, 23, 24, 30, 31, 37, 38, 39, 40, 46, 47, 48, 49, 50, 51):
+					if tile in (76, 77, 79, 80) or tile in (96, 97, 98):
+						self.rock_list.append(tile_data)
+
+					if tile in (8, 9, 10, 13, 15, 16, 17, 23, 24, 30, 31, 37, 38, 39, 40, 46, 47, 48, 49, 50, 66, 74):
+						self.decor_list.append(tile_data)
+					
+					if tile in range(81, 95) or tile in (99, 100):
 						self.decor_list.append(tile_data)
 
 					if tile == 12:
 						exit = Exit(x*TILE_SIZE, y*TILE_SIZE, tile_data)
 						self.objects_group[4].add(exit)
 
-					if tile == 41:
+					if tile == 41 or tile in (101, 102, 103, 104, 78):
 						water = Water(x*TILE_SIZE, y*TILE_SIZE, tile_data)
 						self.objects_group[0].add(water)
 
