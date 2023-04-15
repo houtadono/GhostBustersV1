@@ -154,6 +154,7 @@ class Lance(pygame.sprite.Sprite):
 		self.dame = 34
 		self.type = type_
 		self.rect = p.rect
+		self.id = pygame.time.get_ticks()//1000
 		if p.state_direction == 'right':
 			self.rect = pygame.Rect(p.rect.right-2,p.rect.centery-2, 4, 4)
 		else:
@@ -167,6 +168,7 @@ class Lance(pygame.sprite.Sprite):
 			self.rect = pygame.Rect(self.p.rect.right-2, self.p.rect.centery-2, 4, 4)
 		else:
 			self.rect = pygame.Rect(self.p.rect.left-2, self.p.rect.centery-2, 4, 4)
+		self.state_direction = self.p.state_direction
 
 class Arrow(pygame.sprite.Sprite): 
 	def __init__(self, x, y, direction, type_, win, p) :

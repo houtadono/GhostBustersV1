@@ -5,6 +5,7 @@ import os
 import pickle
 import datetime
 import random
+import pygame_gui
 from world import World, load_level
 from player import Snow, Ignis, Warrior,Knight, PlayerSelectButton, Archer
 from enemies import Ghost
@@ -13,7 +14,7 @@ from projectiles import Gun, Fireball, Grenade, Sword, Lance, Arrow
 from button import Button, RadioButton
 from texts import Text, Message, BlinkingText, MessageBox
 from time import time, sleep
-
+from scoreboard import User, Scoreboard
 pygame.init()
 
 WIDTH, HEIGHT =640, 484
@@ -44,21 +45,26 @@ about_font = 'Fonts/DalelandsUncialBold-82zA.ttf'
 
 ghostbusters = Message(WIDTH//2 + 50, HEIGHT//2 - 90, 90,
                        "GhostBusters", title_font, (255, 255, 255), win)
-left_key = Message(WIDTH//2 + 10, HEIGHT//2 - 90, 20,
-                   "Press left arrow key to go left", instructions_font, (255, 255, 255), win)
-right_key = Message(WIDTH//2 + 10, HEIGHT//2 - 65, 20,
-                    "Press right arrow key to go right", instructions_font, (255, 255, 255), win)
-up_key = Message(WIDTH//2 + 10, HEIGHT//2 - 45, 20,
-                 "Press up arrow key to jump", instructions_font, (255, 255, 255), win)
-space_key = Message(WIDTH//2 + 10, HEIGHT//2 - 25, 20,
-                    "Press space key to shoot", instructions_font, (255, 255, 255), win)
-g_key = Message(WIDTH//2 + 10, HEIGHT//2 - 5, 20,
-                "Press g key to throw grenade", instructions_font, (255, 255, 255), win)
-game_won_msg = Message(WIDTH//2 + 10, HEIGHT//2 - 5, 20,
-                       "You have won the game", instructions_font, (255, 255, 255), win)
+left_key = Message(WIDTH//2 + 10, HEIGHT//2 - 190, 30,
+                   "Press LEFT ARROW key to go left", instructions_font, (255, 255, 255), win)
+right_key = Message(WIDTH//2 + 10, HEIGHT//2 - 140, 30,
+                    "Press RIGHT ARROW key to go right", instructions_font, (255, 255, 255), win)
+up_key = Message(WIDTH//2 + 10, HEIGHT//2 - 90, 30,
+                 "Press UP ARROW key to jump", instructions_font, (255, 255, 255), win)
+space_key = Message(WIDTH//2 + 10, HEIGHT//2 - 40, 30,
+                    "Press SPACE key to use skill", instructions_font, (255, 255, 255), win)
+g_key = Message(WIDTH//2 + 10, HEIGHT//2 + 10, 30,
+                "Press G key to throw grenade", instructions_font, (255, 255, 255), win)
+p_key = Message(WIDTH//2 + 10, HEIGHT//2 + 60, 30,
+                "Press Q key to pause game", instructions_font, (255, 255, 255), win)
+q_key = Message(WIDTH//2 + 10, HEIGHT//2 + 110, 30,
+                "Press Q key to return to main menu", instructions_font, (255, 255, 255), win)
+game_won_no_rank_msg = Message(WIDTH//2, 390 , 20,
+                       "You won the game but not in the top 5 :<", instructions_font, (255, 255, 255), win)
 paused_msg = Message(WIDTH//2 + 10, HEIGHT//4, 40,
                        "Do you want to stop the game?", instructions_font, (255, 255, 255), win)
-
+enter_your_name_msg = Message(WIDTH//2, HEIGHT//4 + 70, 40,
+                       "Enter your name", instructions_font, (255, 255, 255), win)
 select_player_msg = Message(WIDTH//2, HEIGHT//2 - 200, 45,
                        "Select Players", title_font, (255, 255, 255), win)
 
@@ -66,10 +72,12 @@ select_player_msg = Message(WIDTH//2, HEIGHT//2 - 200, 45,
 t = Text(instructions_font, 18)
 font_color = (12, 12, 12)
 play = t.render('Play', font_color)
+select = t.render('  Select', font_color)
 load = t.render('Continue', font_color)
 about = t.render('About', font_color)
+scoreboard = t.render('Scoreboard', font_color)
 controls = t.render('Controls', font_color)
-main_menu = t.render('Main Menu', font_color)
+main_menu = t.render('  Main Menu', font_color)
 exit = t.render('Exit', font_color)
 save = t.render('Save', font_color)
 contiune1 = t.render('Contiune', font_color)
@@ -87,18 +95,15 @@ bwidth = ButtonBG.get_width()
 play_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 35, ButtonBG, 0.5, play, 10)
 load_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2, ButtonBG, 0.5, load, 10)
 # about_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 35, ButtonBG, 0.5, about, 10)
-controls_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG, 0.5, controls, 10)
-exit_btn = Button(WIDTH//2 - bwidth//4, HEIGHT // 2 + 105, ButtonBG, 0.5, exit, 10)
-main_menu_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 140, ButtonBG, 0.5, main_menu, 20)
-
-red_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2+35, ButtonBG,0.5, t.render('Red', font_color), 10)
-white_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG,0.5, t.render('White', font_color), 10)
-warrior_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG,0.5, t.render('Warrior', font_color), 10)
+scoreboard_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 70, ButtonBG, 0.5, scoreboard, 10)
+controls_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG, 0.5, controls, 10)
+exit_btn = Button(WIDTH//2 - bwidth//4, HEIGHT // 2 + 140, ButtonBG, 0.5, exit, 10)
+main_menu_btn = Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 175, ButtonBG, 0.5, main_menu, 20)
 
 continue_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 40, ButtonBG, 0.5, contiune1, 10)
 quit_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, quit1, 10)
 
-select_btn= Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 70, ButtonBG, 0.5, t.render('Select', font_color), 20)
+select_btn= Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 70, ButtonBG, 0.5, select, 20)
 
 right_btn = Button(3*WIDTH//4 - 42 + 40, 180 - 48, pygame.image.load('./Assets/button_next_right.png'), 1.5)
 left_btn = Button(WIDTH//4 - 42 - 40, 180 - 48, pygame.image.load('./Assets/button_next_left.png'), 1.5)
@@ -147,6 +152,7 @@ bg_scroll = 0
 dx = 0
 config = ConfigParser()
 config.read(f'./Data/player.properties')
+Scoreboard.read_file()
 # RESET ***********************************************************************
 
 
@@ -298,7 +304,64 @@ def draw_image_skill(win, delta_time):
 		# vẽ khung
 	pygame.draw.rect(win, frame_color, frame_rect, 2)
 
-	
+def draw_scoreboard(win, forcus= None):
+	s_width = 550
+	s_height = 320
+	cell_width = s_width // 6
+	cell_height = s_height // 6
+	border_rect = pygame.Rect(48, 48, s_width + 4, s_height + 4)
+	pygame.draw.rect(win, (255, 0, 0), border_rect, 2)
+
+	inner_rect = pygame.Rect(50, 50, s_width, s_height)
+	pygame.draw.rect(win, (52, 53, 95), inner_rect)
+
+	font_t = pygame.font.SysFont('Arial', 23)
+	font = pygame.font.SysFont('Arial', 19)
+
+	s_lst = Scoreboard.lst
+
+	for i in range(len(s_lst)):
+		cell_x = 50
+		if i == 0:
+			for j,txt in enumerate(['Top','Name','Class','Time','Death','Score']):
+				if j == 0:
+					cell_width_adj = cell_width // 2
+				else:
+					cell_width_adj = (s_width - cell_width // 2) // 5
+				cell_x += cell_width_adj
+				cell_text = font_t.render(txt, True,(255, 255, 255))
+				cell_rect = cell_text.get_rect()
+				cell_rect.center = (cell_x - cell_width_adj//2, 50 + cell_height // 2)
+				win.blit(cell_text, cell_rect)
+
+		if i == forcus:
+			pygame.draw.rect(win, (255,255,0), (50 + 0,50 + cell_height * (i+1), s_width, cell_height))
+		user = str(s_lst[i]).split('|')
+		cell_x = 50
+		for j in range(len(user)+1):
+			color = (255,0,0) if i == forcus else (255,255,255)
+			if j == 0:
+				cell_width_adj = cell_width // 2
+			else:
+				cell_width_adj = (s_width - cell_width // 2) // 5
+			if j > 0:
+				cell_text = font.render(user[j-1], True,color)
+			else:
+				cell_text = font.render(f'{i+1}', True,color)
+			cell_x += cell_width_adj
+			cell_rect = cell_text.get_rect()
+			cell_rect.center = (cell_x - cell_width_adj//2, 50 + cell_height * (i+1) + cell_height // 2)
+			win.blit(cell_text, cell_rect)
+
+	# vẽ đường kẻ giữa các ô
+	for i in range(1, 6):
+		if i == 1:
+			line_pos = 50 + cell_width // 2
+		else:
+			line_pos = 50 + cell_width // 2 + (s_width - cell_width // 2) // 5 * (i - 1)
+		pygame.draw.line(win, (78, 137, 198), (line_pos, 50+0), (line_pos, 50+s_height))
+		pygame.draw.line(win, (78, 137, 198), (50+0, 50+cell_height * i), (50+s_width, 50+cell_height * i))
+
 # player ...
 p_remain_reload = p_remain_reload2 = 0
 p_reload_time = p_reload_time2 = 0
@@ -315,6 +378,7 @@ moving_up = moving_down = False
 main_menu = True
 about_page = False
 controls_page = False
+scoreboard_page = False
 exit_page = False
 continue_game = False 
 game_start = False
@@ -322,13 +386,13 @@ game_start = False
 select_player = False  # add
 game_won = False
 game_pause = False
+enter_name = False
 running = True
 p_select = PlayerSelectButton(210, HEIGHT//2+50)
 bullet_select = pygame.sprite.Group()
 
 lst_player = [Snow(220,142),Ignis(220,142),Warrior(220,142),Knight(220,142),Archer(220,142)]
 lst_info_player = [ str(config[(class_p.__class__.__name__).lower()]['info']).replace(',',"\n") for class_p in lst_player ]
-print(lst_info_player)
 player_index = 0
 player_select = lst_player[player_index]
 counter_select = 0
@@ -352,6 +416,13 @@ status = {
 	'health': p.health
 }
 status_c = status.copy()
+rank = None
+gui_manager = pygame_gui.UIManager((640, 480))
+text_input = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((170, 300), (160, 30)),
+                                                  manager=gui_manager)
+button_input = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((360, 300), (100, 30)),
+                                      text='OK',object_id='ok_button',
+                                      manager=gui_manager)
 while running:
 	buttons = []
 
@@ -372,10 +443,20 @@ while running:
 
 		if event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_ESCAPE:
-				print(1)
 				if status != status_c:
 					save_data_game()
 				running = False
+			if event.key == pygame.K_RETURN and enter_name:
+				button_input.process_event(event)
+				Scoreboard.lst[rank].name = text_input.text
+				Scoreboard.save_file()
+				enter_name = False
+
+		if event.type == pygame_gui.UI_BUTTON_PRESSED:
+			if event.ui_object_id == "ok_button":
+				Scoreboard.lst[rank].name = text_input.text
+				Scoreboard.save_file()
+				enter_name = False
 
 		if event.type == pygame.KEYDOWN and not game_start and not select_player:
 
@@ -416,7 +497,6 @@ while running:
 							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
 					p_remain_reload = p_reload_time
 					p.attack = True
-					print(p_remain_reload)
 
 				elif p_reload_time2 != 0 and p_remain_reload2 == 0 and p.attack_index < 4 and p.attack_index >0:
 					x, y = p.rect.center
@@ -445,12 +525,14 @@ while running:
 			about_page = False
 			controls_page = False
 			exit_page = False
-			continue_game = False 
+			continue_game = False
+			scoreboard_page = False 
 			game_start = False
 			select_player = False
 			if status != status_c:
 				save_data_game()
 			pass 
+		
 		if event.type == pygame.KEYDOWN and select_player:
 			if event.key == pygame.K_LEFT:
 				player_index -= 1
@@ -499,6 +581,8 @@ while running:
 				moving_up = False
 			if event.key == pygame.K_DOWN:
 				moving_down = False
+		
+		gui_manager.process_events(event)
 
 	if not game_start and not select_player:
 		trail_group.update()
@@ -535,6 +619,9 @@ while running:
 				except:
 					os.remove(f'./Data/save_game')
 
+		if scoreboard_btn.draw(win):
+			scoreboard_page = True
+			main_menu= False
 
 		if controls_btn.draw(win):
 			controls_page = True
@@ -542,8 +629,9 @@ while running:
 
 		if exit_btn.draw(win):
 			running = False
-	
+
 		buttons.append(play_btn)
+		buttons.append(scoreboard_btn)
 		buttons.append(controls_btn)
 		buttons.append(exit_btn)
 
@@ -622,13 +710,21 @@ while running:
 			about_page = False
 			main_menu = True
 
+	elif scoreboard_page:
+		draw_scoreboard(win)
+		if main_menu_btn.draw(win):
+			scoreboard_page = False
+			main_menu = True
+		buttons.append(main_menu_btn)
+	
 	elif controls_page:
 		left_key.update()
 		right_key.update()
 		up_key.update()
 		space_key.update()
 		g_key.update()
-
+		p_key.update()
+		q_key.update()
 		if main_menu_btn.draw(win):
 			controls_page = False
 			main_menu = True
@@ -638,14 +734,34 @@ while running:
 		pass
 
 	elif game_won:
-		game_won_msg.update()
-		status_text = str(status).replace(',',"\n").replace('}','').replace('{','').replace("'",'').title()
-		MessageBox(win, about_font,"Status", status_text, 200,284,100,265)
-		if main_menu_btn.draw(win):
-			controls_page = False
-			main_menu = True
-			level = 1
-	
+		if rank == None:
+			draw_scoreboard(win)
+			game_won_no_rank_msg.update()
+			if main_menu_btn.draw(win):
+				if os.path.exists(f'./Data/save_game'):
+					os.remove(f'./Data/save_game')
+				status = status_c
+				game_won = False
+				main_menu = True
+				level = 1
+		else:
+			if enter_name:
+				rect = pygame.Rect(140,100,360,300)
+				pygame.draw.rect(win, (52, 53, 95), rect)
+				enter_your_name_msg.update()
+				gui_manager.update(pygame.time.Clock().tick(45) / 1000.0)
+				gui_manager.draw_ui(win)
+				text_input.update(pygame.time.Clock().tick(45) / 1000.0)
+			else:
+				draw_scoreboard(win,rank)
+				if main_menu_btn.draw(win):
+					if os.path.exists(f'./Data/save_game'):
+						os.remove(f'./Data/save_game')
+					status = status_c
+					game_won = False
+					main_menu = True
+					level = 1
+
 	elif game_pause:
 		paused_msg.update()
 		status_text = str(status).replace(',',"\n").replace('}','').replace('{','').replace("'",'').title()
@@ -660,6 +776,7 @@ while running:
 			main_menu = True
 			game_start = False
 			last_time = time() 
+			save_data_game()
 			start_time += pygame.time.get_ticks() - pause_time 
 
 		buttons.append(continue_btn)
@@ -705,8 +822,6 @@ while running:
 			screen_scroll = -dx
 			bg_scroll -= screen_scroll
 
-
-
 		# Collision Detetction ****************************************************
 
 		if p.rect.bottom > HEIGHT:
@@ -735,24 +850,32 @@ while running:
 				status['health'] = p.health
 				print("Pass level", status)
 			else:
+				status['score'] = score
+				user_new = User('a', status['character'],status['score'],status['time_play'],status['die'])
+				rank = Scoreboard.add_user(user_new)
+				if rank!=None:
+					enter_name = True
 				game_won = True
 
 		potion = pygame.sprite.spritecollide(p, potion_group, False)
 		if potion:
 			if p.health < 100:
 				potion[0].kill()
-				p.health += 15
+				add_health = min(15, 100 - p.health)
+				p.health += add_health
 				health_fx.play()
-				if p.health > 100:
-					p.health = 100
+				p.add_notice(f"+{add_health}",1,win)
+				
 				if p_class == Ignis:
 					p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
 
 		for bullet in bullet_group:
 			enemy =  pygame.sprite.spritecollide(bullet, enemy_group, False)
-
-			if enemy and bullet.type == 1:
-				if enemy[0].on_death_bed == False:
+			if enemy and bullet.type == 1 and enemy[0].on_death_bed == False:
+				if p_class != Knight or (p_class == Knight and (enemy[0].id_get_damage != bullet.id or \
+						    (enemy[0].direct_get_damge != bullet.state_direction and bullet.id == enemy[0].id_get_damage) )) :
+					enemy[0].direct_get_damge = bullet.state_direction
+					enemy[0].id_get_damage = bullet.id
 					get_dame = bullet.dame
 					if enemy[0].health <= 0 and enemy[0].on_death_bed == False :
 						score += 300
@@ -773,7 +896,8 @@ while running:
 					enemy[0].hit = True
 					enemy[0].get_hit(get_dame)
 
-				bullet.kill()
+				if p_class != Knight:
+					bullet.kill()
 
 			if bullet.rect.colliderect(p):
 				if bullet.type == 2:
@@ -860,7 +984,7 @@ while running:
 				break
 
 	pygame.draw.rect(win, (255, 255,255), (0, 0, WIDTH, HEIGHT), 4, border_radius=10)
-	clock.tick(FPS)/1000.0
+	clock.tick(FPS)
 	pygame.display.update()
 
 pygame.quit()

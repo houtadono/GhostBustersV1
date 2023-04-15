@@ -49,9 +49,10 @@ class Button():
 		#draw button
 		surface.blit(self.image, (self.rect.x, self.rect.y))
 		if self.text:
-			self.image.blit(self.text, (self.width//2 - self.xoff, self.height//2 - self.yoff))
+			self.image.blit(self.text, (self.width//2 - self.xoff - 10, self.height//2 - self.yoff))
 
 		return action 
+	
 class RadioButton:
 	def __init__(self, x, y, width, height, text, selected=False):
 		self.rect = pygame.Rect(x, y, width, height)

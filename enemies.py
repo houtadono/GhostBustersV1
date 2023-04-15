@@ -17,7 +17,7 @@ class Ghost(pygame.sprite.Sprite):
 		self.initial_pos_x = x
 
 		self.size = 24
-
+		
 		self.walk_left = []
 		self.walk_right = []
 		self.hit_list = []
@@ -49,7 +49,9 @@ class Ghost(pygame.sprite.Sprite):
 		self.max_health = 100
 		self.hit = False
 		self.on_death_bed = False
-
+		self.direct_get_damge = ''
+		self.id_get_damage = 0
+		
 		self.image = self.walk_right[self.walk_index]
 		self.rect = self.image.get_rect(center=(self.x, self.y))
 		self.get_damage_aplha = 0

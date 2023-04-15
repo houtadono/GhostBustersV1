@@ -1,6 +1,8 @@
 import pygame
 WIDTH, HEIGHT =640, 484
 
+death_fx = pygame.mixer.Sound('./Sounds/player_death.mp3')
+
 class Snow(pygame.sprite.Sprite):
 	def __init__(self, x, y):
 		super(Snow, self).__init__()
@@ -106,6 +108,8 @@ class Snow(pygame.sprite.Sprite):
 		self.counter += 1
 		if self.counter % 7 == 0:
 			if self.health <= 0:
+				if self.death_index == 0:
+					death_fx.play()
 				self.death_index += 1
 				if self.death_index >= len(self.death_list):
 					self.alive = False
@@ -165,8 +169,7 @@ class Snow(pygame.sprite.Sprite):
 						self.lst_notice.pop(i)
 						i-=1
 				except:
-					print('null')
-					i-=1
+					pass
 
 	def update(self, moving_left, moving_right, world):
 		self.dx = 0
@@ -221,6 +224,15 @@ class Snow(pygame.sprite.Sprite):
 		
 	def draw(self, win):
 		win.blit(self.image, self.rect)
+
+	def add_notice(self, notice, type, win):
+		if not hasattr(self,'win'):
+			self.win = win
+		notice_text = pygame.font.Font(None, 20).render(notice, True, (255,0,0) if type==2 else (0,255,0))
+		notice_text_x = self.rect.x + 20
+		notice_text_y = self.rect.y - 20
+		notice_text_time = 255
+		self.lst_notice.append([notice_text,notice_text_x,notice_text_y,notice_text_time])
 	
 class Ignis(pygame.sprite.Sprite):
 	def __init__(self, x, y):
@@ -328,6 +340,8 @@ class Ignis(pygame.sprite.Sprite):
 		self.counter += 1
 		if self.counter % 7 == 0:
 			if self.health <= 0:
+				if self.death_index == 0:
+					death_fx.play()
 				self.death_index += 1
 				if self.death_index >= len(self.death_list):
 					self.alive = False
@@ -387,8 +401,7 @@ class Ignis(pygame.sprite.Sprite):
 						self.lst_notice.pop(i)
 						i-=1
 				except:
-					print('null')
-					i-=1
+					pass
 
 
 	def update(self, moving_left, moving_right, world):
@@ -559,6 +572,8 @@ class Warrior(pygame.sprite.Sprite):
 		self.counter += 1
 		if self.counter % 7 == 0:
 			if self.health <= 0:
+				if self.death_index == 0:
+					death_fx.play()
 				self.death_index += 1
 				if self.death_index >= len(self.death_list):
 					self.alive = False
@@ -624,8 +639,7 @@ class Warrior(pygame.sprite.Sprite):
 						self.lst_notice.pop(i)
 						i-=1
 				except:
-					print('null')
-					i-=1
+					pass
 
 
 	def update(self, moving_left, moving_right, world):
@@ -795,6 +809,8 @@ class Knight(pygame.sprite.Sprite):
 		self.counter += 1
 		if self.counter % 7 == 0:
 			if self.health <= 0:
+				if self.death_index == 0:
+					death_fx.play()
 				self.death_index += 1
 				if self.death_index >= len(self.death_list):
 					self.alive = False
@@ -854,8 +870,7 @@ class Knight(pygame.sprite.Sprite):
 						self.lst_notice.pop(i)
 						i-=1
 				except:
-					print('null')
-					i-=1
+					pass
 
 
 	def update(self, moving_left, moving_right, world):
@@ -1029,6 +1044,8 @@ class Archer(pygame.sprite.Sprite):
 		self.counter += 1
 		if self.counter % 7 == 0:
 			if self.health <= 0:
+				if self.death_index == 0:
+					death_fx.play()
 				self.death_index += 1
 				if self.death_index >= len(self.death_list):
 					self.alive = False
@@ -1088,7 +1105,7 @@ class Archer(pygame.sprite.Sprite):
 						self.lst_notice.pop(i)
 						i-=1
 				except:
-					print('null')
+					pass
 
 
 	def update(self, moving_left, moving_right, world):
