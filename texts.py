@@ -82,18 +82,17 @@ def MessageBox(win, font, name, text):
 					title_width, 30), border_radius=10)
 	win.blit(title, (WIDTH // 2 - title.get_width()//2 + 10, 10))
 
-def MessageBox(win, font, name, text, width=640, height=284, x=35, y=65, color=(0,0,0)):
+def MessageBox(win, font, name, text, width=640, height=0, x=35, y=65, color=(0,0,0)):
 	''' This class creates a message box and fills the text with line breaks'''
-
-
-	# # Draw the white background behind the message box
-	# pygame.draw.rect(win, (255,255,255), (x, y, width - 2*x, height - 2*y), border_radius=10)
     
 	lines = text.split('\n')
 
 	message_width = max( font.render(line, 1, color).get_width() + 20 for line in lines )
 	message_height = len(lines) * 25 + 20
-	background_rect = pygame.Rect(x - 10, y - 10, message_width + 20, message_height + 20)
+	ww = max(width, message_width + 20)
+	hh = message_height + 20
+	if height!=0: hh = height
+	background_rect = pygame.Rect(x - 10, y - 10, ww, hh)
 	pygame.draw.rect(win, (255,255,255,0), background_rect, border_radius=10)
 
 	lines = text.split('\n')
@@ -108,8 +107,9 @@ def MessageBox(win, font, name, text, width=640, height=284, x=35, y=65, color=(
 			# 	line_y += 25
 			win.blit(rendered, (line_x, line_y))
 			line_x += word_width + 5
-
-	title = font.render(name, 0, (0,0,0))
-	title_width = min(title.get_width() + 20, width - 20)
-	pygame.draw.rect(win, (255,255,255), (x + width // 2 - title_width // 2, y - 40, title_width, 30), border_radius=10)
-	win.blit(title, (x + width // 2 - title.get_width()//2, y - 35))
+	if name != "":
+		title = font.render(name, 0, (0,0,0))
+		title_width = title.get_width() + 20
+		rect_title = pygame.Rect(x + message_width // 2 - title_width // 2, y - 40, title_width, 30)
+		pygame.draw.rect(win, (255,255,255), rect_title, border_radius=10)
+		win.blit(title, (rect_title.centerx - title.get_width()//2, rect_title.centery - title.get_height()//2 ))

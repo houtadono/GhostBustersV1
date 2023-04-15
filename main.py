@@ -4,13 +4,13 @@ import pygame
 import os
 import pickle
 import datetime
-
+import random
 from world import World, load_level
-from player import Player, Warrior,Knight, PlayerSelectButton, Archer
+from player import Snow, Ignis, Warrior,Knight, PlayerSelectButton, Archer
 from enemies import Ghost
 from particles import Trail
 from projectiles import Gun, Fireball, Grenade, Sword, Lance, Arrow
-from button import Button
+from button import Button, RadioButton
 from texts import Text, Message, BlinkingText, MessageBox
 from time import time, sleep
 
@@ -59,8 +59,8 @@ game_won_msg = Message(WIDTH//2 + 10, HEIGHT//2 - 5, 20,
 paused_msg = Message(WIDTH//2 + 10, HEIGHT//4, 40,
                        "Do you want to stop the game?", instructions_font, (255, 255, 255), win)
 
-status_msg = Message(WIDTH//2 + 10, HEIGHT//4 + 30, 20,
-                       "Do you want to stop the game?", instructions_font, (255, 255, 255), win)
+select_player_msg = Message(WIDTH//2, HEIGHT//2 - 200, 45,
+                       "Select Players", title_font, (255, 255, 255), win)
 
 
 t = Text(instructions_font, 18)
@@ -69,9 +69,8 @@ play = t.render('Play', font_color)
 load = t.render('Continue', font_color)
 about = t.render('About', font_color)
 controls = t.render('Controls', font_color)
-exit = t.render('Exit', font_color)
 main_menu = t.render('Main Menu', font_color)
-
+exit = t.render('Exit', font_color)
 save = t.render('Save', font_color)
 contiune1 = t.render('Contiune', font_color)
 quit1 = t.render('Quit', font_color)
@@ -99,18 +98,18 @@ warrior_btn = Button(WIDTH//2 - bwidth//4, HEIGHT//2 + 105, ButtonBG,0.5, t.rend
 continue_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 40, ButtonBG, 0.5, contiune1, 10)
 quit_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, quit1, 10)
 
-exit1_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 110, ButtonBG, 0.5, exit, 10)
-exit2_btn = Button(WIDTH//2 - bwidth//4 + 70, HEIGHT //2 + 75, ButtonBG, 0.5, exit, 10)
+select_btn= Button(WIDTH//2 - bwidth//4, HEIGHT //2 + 70, ButtonBG, 0.5, t.render('Select', font_color), 20)
 
+right_btn = Button(3*WIDTH//4 - 42 + 40, 180 - 48, pygame.image.load('./Assets/button_next_right.png'), 1.5)
+left_btn = Button(WIDTH//4 - 42 - 40, 180 - 48, pygame.image.load('./Assets/button_next_left.png'), 1.5)
 # MUSIC ***********************************************************************
 
-pygame.mixer.music.load('Sounds/mixkit-complex-desire-1093.mp3')
+pygame.mixer.music.load('./Sounds/wind-145331.mp3')
 pygame.mixer.music.play(loops=-1)
 pygame.mixer.music.set_volume(0.6)
-
+select_fx = pygame.mixer.Sound('./Sounds/button_select.wav')
 diamond_fx = pygame.mixer.Sound('Sounds/point.mp3')
 diamond_fx.set_volume(0.6)
-bullet_fx = pygame.mixer.Sound('Sounds/bullet.wav')
 jump_fx = pygame.mixer.Sound('Sounds/jump.mp3')
 health_fx = pygame.mixer.Sound('Sounds/health.wav')
 menu_click_fx = pygame.mixer.Sound('Sounds/menu.mp3')
@@ -140,13 +139,14 @@ COLS = 40
 SCROLL_THRES = 200
 MAX_LEVEL = 3
 
-level = 0
+level = 1
 score = 0
 level_length = 0
 screen_scroll = 0
 bg_scroll = 0
 dx = 0
-
+config = ConfigParser()
+config.read(f'./Data/player.properties')
 # RESET ***********************************************************************
 
 
@@ -170,21 +170,19 @@ def reset_level(level):
 	return world_data, level_length, w
 
 def get_info_player(type_):
-	config = ConfigParser()
-	config.read(f'./Data/player.properties')
-	global p_reload_time, p_reload_time2, p_path_img, p_class, p_weapon, img_skill, img_skill2, img_avt
+	global p_reload_time, p_reload_time2, p_class, p_weapon, img_skill, img_skill2, img_avt
 	p_reload_time = float(config[type_]['reload_time'])
-	k = config[type_]['class']
+	#k = config[type_]['class']
 
 	k = config[type_]['weapon']
 	if k == 'Sword':
 		p_class = Warrior
 		p_weapon = Sword
 	elif k=='Gun':
-		p_class = Player
+		p_class = Snow
 		p_weapon = Gun
 	elif k=='Fireball':
-		p_class = Player
+		p_class = Ignis
 		p_weapon = Fireball
 	elif k=='Lance':
 		p_class = Knight
@@ -194,9 +192,8 @@ def get_info_player(type_):
 		p_weapon = Arrow
 
 	img_avt = pygame.image.load( f'%s' %(str(config[type_]['img_avt'])) )
-	img_skill = pygame.transform.scale(img_avt, (42, 42)) 
+	img_avt = pygame.transform.scale(img_avt, (36, 36)) 
 
-	p_path_img = config[type_]['image_folder']
 	img_skill = pygame.image.load( f'%s' %(str(config[type_]['img_skill'])) )
 	img_skill = pygame.transform.scale(img_skill, (24, 24))
 	if k=='Lance':
@@ -211,9 +208,9 @@ def get_info_player(type_):
 		pass
 
 def reset_player():
-	global p_path_img,p_type,p_class
+	global p_type,p_class
 	get_info_player(p_type)
-	p = p_class(250, 50, p_path_img)
+	p = p_class(250, 50)
 	moving_left = False
 	moving_right = False
 	return p, moving_left, moving_right
@@ -225,7 +222,7 @@ def save_data_game():
 
 def load_data_continue_pre_game():
 	try:
-		global level, p_type, p_path_img, p, status, score
+		global level, p_type, p, status, score
 		with open("./Data/save_game", "rb") as f:
 			status = pickle.load(f)
 		p_type = str(status['character']).lower()
@@ -305,8 +302,7 @@ def draw_image_skill(win, delta_time):
 # player ...
 p_remain_reload = p_remain_reload2 = 0
 p_reload_time = p_reload_time2 = 0
-p_path_img = None
-p_type = 'adminwhite'
+p_type = 'snow'
 p_class = None
 p_weapon = None
 img_skill = img_skill2 = None
@@ -327,9 +323,24 @@ select_player = False  # add
 game_won = False
 game_pause = False
 running = True
-
-p_select = PlayerSelectButton(210, HEIGHT//2+50, f'Assets/Player')
+p_select = PlayerSelectButton(210, HEIGHT//2+50)
 bullet_select = pygame.sprite.Group()
+
+lst_player = [Snow(220,142),Ignis(220,142),Warrior(220,142),Knight(220,142),Archer(220,142)]
+lst_info_player = [ str(config[(class_p.__class__.__name__).lower()]['info']).replace(',',"\n") for class_p in lst_player ]
+print(lst_info_player)
+player_index = 0
+player_select = lst_player[player_index]
+counter_select = 0
+
+animation_buttons = [
+	RadioButton(WIDTH - 150, HEIGHT//4 + 150, 100, 40, "Idle", selected=True),
+	RadioButton(WIDTH - 150, HEIGHT//4 + 200, 100, 40, "Attack"),
+	RadioButton(WIDTH - 150, HEIGHT//4 + 250, 100, 40, "Walk"),
+	RadioButton(WIDTH - 150, HEIGHT//4 + 300, 100, 40, "Dead")
+]
+animation_index = 0
+animation_select = "Idle"
 
 status = {
 	'character': p_type.title(),
@@ -366,7 +377,7 @@ while running:
 					save_data_game()
 				running = False
 
-		if event.type == pygame.KEYDOWN and not game_start:
+		if event.type == pygame.KEYDOWN and not game_start and not select_player:
 
 			if event.key == pygame.K_LEFT:
 				moving_left = True
@@ -382,7 +393,7 @@ while running:
 				bullet_select.add(bullet)
 				p_select.attack = True
 
-		elif event.type == pygame.KEYDOWN:
+		elif event.type == pygame.KEYDOWN and game_start and p.health>0: # game_play
 			if event.key == pygame.K_LEFT:
 				moving_left = True
 			if event.key == pygame.K_RIGHT:
@@ -401,8 +412,11 @@ while running:
 					except:
 						bullet = p_weapon(x, y, direction, 1,win,p)
 					bullet_group.add(bullet)
+					if p_class == Ignis:
+							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
 					p_remain_reload = p_reload_time
 					p.attack = True
+					print(p_remain_reload)
 
 				elif p_reload_time2 != 0 and p_remain_reload2 == 0 and p.attack_index < 4 and p.attack_index >0:
 					x, y = p.rect.center
@@ -426,12 +440,55 @@ while running:
 				pause_time = pygame.time.get_ticks()
 				pass
 			
-		if event.type == pygame.KEYDOWN and event.key == pygame.K_q and (game_start or game_pause): # press q to quit
+		if event.type == pygame.KEYDOWN and event.key == pygame.K_q and not main_menu: # press q to quit
 			main_menu = True
-			game_pause = False
+			about_page = False
+			controls_page = False
+			exit_page = False
+			continue_game = False 
 			game_start = False
-			save_data_game()
+			select_player = False
+			if status != status_c:
+				save_data_game()
 			pass 
+		if event.type == pygame.KEYDOWN and select_player:
+			if event.key == pygame.K_LEFT:
+				player_index -= 1
+				if player_index == -1:
+					player_index += len(lst_player)
+				player_select = lst_player[player_index]
+			if event.key == pygame.K_RIGHT:
+				player_index += 1
+				player_index %= len(lst_player)
+				player_select = lst_player[player_index]
+			if event.key == pygame.K_UP:
+				animation_index -= 1
+				if animation_index <0: animation_index += len(animation_buttons)
+				for button in animation_buttons:
+					if button.text == animation_select:
+						button.deselect()
+				animation_buttons[animation_index].select()
+				animation_select = animation_buttons[animation_index].text	
+			if event.key == pygame.K_DOWN:
+				animation_index += 1
+				animation_index %= len(animation_buttons)
+				for button in animation_buttons:
+					if button.text == animation_select:
+						button.deselect()
+				animation_buttons[animation_index].select()
+				animation_select = animation_buttons[animation_index].text	
+			if event.key == pygame.K_SPACE:
+				select_fx.play()
+				game_start = True
+				p_type = type(player_select).__name__.lower()
+				 
+		if event.type == pygame.MOUSEBUTTONDOWN and select_player:
+			for button in animation_buttons:
+				if button.rect.collidepoint(event.pos):
+					for b in animation_buttons:
+						b.deselect()
+					button.select()
+					animation_select = button.text
 
 		if event.type == pygame.KEYUP:
 			if event.key == pygame.K_LEFT:
@@ -443,7 +500,7 @@ while running:
 			if event.key == pygame.K_DOWN:
 				moving_down = False
 
-	if not game_start:
+	if not game_start and not select_player:
 		trail_group.update()
 		p_select.update(moving_left, moving_right, moving_up, moving_down)
 		p_select.draw(win)
@@ -456,14 +513,12 @@ while running:
 	if main_menu:
 		ghostbusters.update()
 		if play_btn.draw(win):
-			menu_click_fx.play()
 			select_player = True  # add
 			main_menu = False  # add
 
 		if os.path.exists(f'./Data/save_game'):
 			buttons.append(load_btn)
 			if load_btn.draw(win):
-				menu_click_fx.play()
 				check = load_data_continue_pre_game()
 				try:
 					if check:
@@ -471,7 +526,10 @@ while running:
 						world_data, level_length, w = reset_level(level)
 						game_start = True
 						main_menu = False
+						bg_scroll = 0
 						start_time = pygame.time.get_ticks() - status['time_play']*1000
+						if p_class == Ignis:
+							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
 					else:
 						os.remove(f'./Data/save_game')
 				except:
@@ -479,12 +537,10 @@ while running:
 
 
 		if controls_btn.draw(win):
-			menu_click_fx.play()
 			controls_page = True
 			main_menu = False
 
 		if exit_btn.draw(win):
-			menu_click_fx.play()
 			running = False
 	
 		buttons.append(play_btn)
@@ -492,43 +548,77 @@ while running:
 		buttons.append(exit_btn)
 
 	elif select_player:
-		if red_btn.draw(win):
-			game_start = True
-			p_type='adminred'
+		MessageBox(win, pygame.font.SysFont('Arial', 15), "", lst_info_player[player_index], 267, 265, 0, HEIGHT//2)
+		select_player_msg.update()
 
-		if white_btn.draw(win):
-			game_start = True
-			p_type='adminwhite'
+		for animation_button in animation_buttons:
+			animation_button.draw(win)
+	
+		counter_select += 1
+		if counter_select % 7 == 0:
+			if animation_select == "Idle":
+				player_select.idle_index = (player_select.idle_index + 1) % len(player_select.idle_list)	
+				player_select.image = player_select.idle_list[player_select.idle_index]
+			elif animation_select == "Attack":
+				player_select.attack_index = (player_select.attack_index + 1) % len(player_select.attack_list)	
+				player_select.image = player_select.attack_list[player_select.attack_index]
+			elif animation_select == "Walk":
+				player_select.walk_index = (player_select.walk_index + 1) % len(player_select.walk_right)	
+				player_select.image = player_select.walk_right[player_select.walk_index]
+			elif animation_select == "Dead":
+				player_select.death_index = (player_select.death_index + 1) % len(player_select.death_list)	
+				player_select.image = player_select.death_list[player_select.death_index]
 
-		if warrior_btn.draw(win):
+		if player_index == 3:
+			player_select.image = pygame.transform.scale(player_select.image, (150, 150))
+		else:
+			player_select.image = pygame.transform.scale(player_select.image, (120, 120))
+
+		rect = pygame.Rect(WIDTH // 2 - 100,  80, 200, 200)
+		pygame.draw.rect(win, (52, 53, 95), rect)
+		pygame.draw.rect(win, (255, 0, 0), rect, 1) # Khung đỏ
+
+		text = pygame.font.Font(None, 30).render(type(player_select).__name__, True, (255, 255, 255))
+		text_rect = text.get_rect(midbottom=(rect.centerx, rect.bottom))
+		win.blit(text, text_rect)
+
+		player_select.rect = player_select.image.get_rect(center=rect.center)
+		win.blit(player_select.image, player_select.rect)
+
+		if right_btn.draw(win):
+			player_index += 1
+			player_index %= len(lst_player)
+			player_select = lst_player[player_index]
+		if left_btn.draw(win):
+			player_index -= 1
+			if player_index == -1:
+				player_index += len(lst_player)
+			player_select = lst_player[player_index]
+			
+		if select_btn.draw(win):
 			game_start = True
-			p_type = 'warrior'
+			select_fx.play()
+			p_type = type(player_select).__name__.lower()
+
+		if main_menu_btn.draw(win):
+			select_player = False
+			main_menu = True
 
 		if game_start:
 			select_player = False
-			menu_click_fx.play()
-			level += 1
 			world_data, level_length, w = reset_level(level)
 			last_time = time() # add
 			start_time = pygame.time.get_ticks()
 			p, moving_left, moving_right = reset_player()
 			main_menu = False
+			bg_scroll = 0
+
 			status['character'] =  p_type.title()
 			status['level'] = level
-
-		if main_menu_btn.draw(win):
-			menu_click_fx.play()
-			select_player = False
-			main_menu = True
-		buttons.append(red_btn)
-		buttons.append(white_btn)
-		buttons.append(warrior_btn)
-		buttons.append(main_menu_btn)
 		
 	elif about_page:
 		MessageBox(win, about_font, 'GhostBusters', info)
 		if main_menu_btn.draw(win):
-			menu_click_fx.play()
 			about_page = False
 			main_menu = True
 
@@ -540,7 +630,6 @@ while running:
 		g_key.update()
 
 		if main_menu_btn.draw(win):
-			menu_click_fx.play()
 			controls_page = False
 			main_menu = True
 		buttons.append(main_menu_btn)
@@ -550,8 +639,9 @@ while running:
 
 	elif game_won:
 		game_won_msg.update()
+		status_text = str(status).replace(',',"\n").replace('}','').replace('{','').replace("'",'').title()
+		MessageBox(win, about_font,"Status", status_text, 200,284,100,265)
 		if main_menu_btn.draw(win):
-			menu_click_fx.play()
 			controls_page = False
 			main_menu = True
 			level = 1
@@ -559,8 +649,7 @@ while running:
 	elif game_pause:
 		paused_msg.update()
 		status_text = str(status).replace(',',"\n").replace('}','').replace('{','').replace("'",'').title()
-		MessageBox(win, about_font,"Status", status_text, 200,100,100,265)
-		status_msg.update(text="Hello\nabc")
+		MessageBox(win, about_font,"Status", status_text, 200,284,100,265)
 		if continue_btn.draw(win):
 			game_pause = False
 			game_start = True
@@ -617,6 +706,7 @@ while running:
 			bg_scroll -= screen_scroll
 
 
+
 		# Collision Detetction ****************************************************
 
 		if p.rect.bottom > HEIGHT:
@@ -647,7 +737,6 @@ while running:
 			else:
 				game_won = True
 
-
 		potion = pygame.sprite.spritecollide(p, potion_group, False)
 		if potion:
 			if p.health < 100:
@@ -656,19 +745,34 @@ while running:
 				health_fx.play()
 				if p.health > 100:
 					p.health = 100
+				if p_class == Ignis:
+					p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
 
 		for bullet in bullet_group:
 			enemy =  pygame.sprite.spritecollide(bullet, enemy_group, False)
 
 			if enemy and bullet.type == 1:
 				if enemy[0].on_death_bed == False:
-					enemy[0].hit = True
-					enemy[0].get_hit(bullet.dame)
+					get_dame = bullet.dame
 					if enemy[0].health <= 0 and enemy[0].on_death_bed == False :
 						score += 300
 						enemy[0].on_death_bed = True
-					if hasattr(bullet,'skill1') and bullet.skill1 == False :
-						p.health += (100-p.health)//20
+					if hasattr(bullet,'skill1'): # sword
+						if bullet.skill1 == True: 
+							p.health += (100-p.health)//10
+							p.add_notice(f"+{(100-p.health)//10}",1,win)
+						else:
+							add_health = min(100*7//100, 100 - p.health)
+							p.health += add_health
+							p.add_notice(f"+{add_health}",1,win)
+					if hasattr(bullet, 'crit'): # crit
+						if random.randint(1, 100) <= bullet.crit:
+							get_dame*=2
+							p.add_notice("crit",1,win)
+					
+					enemy[0].hit = True
+					enemy[0].get_hit(get_dame)
+
 				bullet.kill()
 
 			if bullet.rect.colliderect(p):
@@ -677,15 +781,17 @@ while running:
 						p.hit = True
 						if p_class == Knight:
 							p.health -= 10
+							p.add_notice("-10",2,win)
 						else:
 							p.health -= 20
+							p.add_notice("-20",2,win)
 						print(p.health)
 					bullet.kill()
 
 		# drawing variables *******************************************************
 		
 		pygame.draw.rect(win, (255,255,255) , (6, 6, 40, 40), border_radius=5)
-		win.blit(img_avt,(12, 8, 42, 42))
+		win.blit(img_avt,(6, 6, 40, 40))
 
 		health_font = pygame.font.Font(None, 26)
 		health_text = health_font.render(str(p.health), True, (0, 0, 255))
@@ -707,7 +813,7 @@ while running:
 		
 		draw_image_skill(win,delta_time)
 
-		if p.health <= 0:
+		if p.health <= 0 and p.revive:
 			screen_scroll = 0
 			bg_scroll = 0
 			world_data, level_length, w = reset_level(level)
@@ -733,10 +839,15 @@ while running:
 			# draw score
 		text = pygame.font.Font(None, 36).render(\
 			f"Score: {score}", True, (255, 255, 255))
-		text_rect = text.get_rect(center=(70, HEIGHT - text.get_height()) )
+		text_rect = text.get_rect(center=(80, HEIGHT - text.get_height()) )
+		win.blit(text, text_rect)
+			# draw level
+		text = pygame.font.Font(None, 36).render(\
+			f"Level: {status['level']}", True, (255, 255, 255))
+		text_rect = text.get_rect(center=(WIDTH - text.get_width() + 20, HEIGHT - text.get_height()) )
 		win.blit(text, text_rect)
 
-	if not game_start:
+	if not game_start and not select_player:
 		check = False
 		for bullet in bullet_select:
 			for bt in buttons:

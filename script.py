@@ -2,7 +2,7 @@ import pickle
 
 status = {
 	'character': 'Warrior',
-	'level' : 2,
+	'level' : 3,
 	'score': 11000,
 	'time_play': 0,
 	'die' : 0,

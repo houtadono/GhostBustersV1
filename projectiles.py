@@ -38,7 +38,7 @@ class Gun(pygame.sprite.Sprite):
 			self.color = (160, 160, 160)
 
 		self.dame = 21
-		self.crit = 1 # add after
+		self.crit = 5 # add after
 
 		self.speed = 10
 		self.radius = 4
@@ -76,7 +76,6 @@ class Fireball(pygame.sprite.Sprite):
 		self.x = x  + space_x
 		self.y = y 
 		self.dame = 34
-		self.crit = 10
 		if self.direction == -1: 
 			self.image = pygame.transform.flip(self.image, True, False) 
 		fireball_fx.play()
@@ -112,7 +111,6 @@ class Sword(pygame.sprite.Sprite):
 		self.color = (240, 240, 240,0)
 		self.type = type_
 		self.win = win
-		self.dame = 50
 		self.speed = 2
 		self.radius = 4
 		self.time_start = pygame.time.get_ticks()
@@ -120,7 +118,9 @@ class Sword(pygame.sprite.Sprite):
 		self.skill1 = skill1
 		if skill1:
 			sword1_fx.play()
+			self.dame = 25
 		else:
+			self.dame = 50
 			sword2_fx.play()
 
 	def update(self, screen_scroll, world):
@@ -177,7 +177,7 @@ class Arrow(pygame.sprite.Sprite):
 		self.image = pygame.image.load(f'Assets/Arrow.png')
 		self.rect = self.image.get_rect(center=(x, y))
 		self.dame = 50
-		self.crit = 10
+		self.crit = 25
 		self.p = p
 		self.start = False
 		arrow1_fx.play()
