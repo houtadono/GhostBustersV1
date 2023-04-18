@@ -452,7 +452,7 @@ while running:
 				Scoreboard.save_file()
 				enter_name = False
 
-		if event.type == pygame_gui.UI_BUTTON_PRESSED:
+		if event.type == pygame_gui.UI_BUTTON_PRESSED and enter_name:
 			if event.ui_object_id == "ok_button":
 				Scoreboard.lst[rank].name = text_input.text
 				Scoreboard.save_file()
@@ -494,7 +494,7 @@ while running:
 						bullet = p_weapon(x, y, direction, 1,win,p)
 					bullet_group.add(bullet)
 					if p_class == Ignis:
-							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
+							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//20))
 					p_remain_reload = p_reload_time
 					p.attack = True
 
@@ -613,7 +613,7 @@ while running:
 						bg_scroll = 0
 						start_time = pygame.time.get_ticks() - status['time_play']*1000
 						if p_class == Ignis:
-							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
+							p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//20))
 					else:
 						os.remove(f'./Data/save_game')
 				except:
@@ -867,15 +867,19 @@ while running:
 				p.add_notice(f"+{add_health}",1,win)
 				
 				if p_class == Ignis:
-					p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//5))
+					p_reload_time = float(config['ignis']['reload_time']) * (1 - 0.2 * ((100 - p.health)//20))
 
 		for bullet in bullet_group:
 			enemy =  pygame.sprite.spritecollide(bullet, enemy_group, False)
 			if enemy and bullet.type == 1 and enemy[0].on_death_bed == False:
 				if p_class != Knight or (p_class == Knight and (enemy[0].id_get_damage != bullet.id or \
 						    (enemy[0].direct_get_damge != bullet.state_direction and bullet.id == enemy[0].id_get_damage) )) :
-					enemy[0].direct_get_damge = bullet.state_direction
-					enemy[0].id_get_damage = bullet.id
+					try:
+						enemy[0].direct_get_damge = bullet.state_direction
+						enemy[0].id_get_damage = bullet.id
+					except:
+						pass 
+
 					get_dame = bullet.dame
 					if enemy[0].health <= 0 and enemy[0].on_death_bed == False :
 						score += 300
