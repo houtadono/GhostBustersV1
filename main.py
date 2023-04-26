@@ -663,7 +663,7 @@ while running:
 			player_select.image = pygame.transform.scale(player_select.image, (120, 120))
 
 		rect = pygame.Rect(WIDTH // 2 - 100,  80, 200, 200)
-		pygame.draw.rect(win, (52, 53, 95), rect)
+		pygame.draw.rect(win, (52, 53, 95), rect) # nền select player
 		pygame.draw.rect(win, (255, 0, 0), rect, 1) # Khung đỏ
 
 		text = pygame.font.Font(None, 30).render(type(player_select).__name__, True, (255, 255, 255))
@@ -698,6 +698,7 @@ while running:
 			last_time = time() # add
 			start_time = pygame.time.get_ticks()
 			p, moving_left, moving_right = reset_player()
+			# p2 = reset_player()[0]
 			main_menu = False
 			bg_scroll = 0
 
@@ -814,7 +815,8 @@ while running:
 		screen_scroll = 0
 		p.update(moving_left, moving_right, w)
 		p.draw(win)
-
+		# p2.update(False,False,w) 
+		# p2.draw(win)
 		if (p.rect.right >= WIDTH - SCROLL_THRES and bg_scroll < (level_length*TILE_SIZE) - WIDTH) \
 			or (p.rect.left <= SCROLL_THRES and bg_scroll > abs(dx)):
 			dx = p.dx
@@ -926,7 +928,7 @@ while running:
 		pygame.draw.rect(win, (128,128,128) , (49, 8, 100, 20), border_radius=5)
 
 		if p.alive:
-			color = (0, 255, 0)
+			color = (0,255,0)
 			if p.health <= 40:
 				color = (255, 0, 0)
 			pygame.draw.rect(win, color, (49, 8, p.health, 20), border_radius=5)

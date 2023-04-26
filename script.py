@@ -7,7 +7,7 @@ status = {
 	'time_play': 0,
 	'die' : 0,
 	'grenades': 7,
-	'health': 1000
+	'health': 100000
 }
 
 # Ghi dict vào file byte

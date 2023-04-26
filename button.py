@@ -1,7 +1,7 @@
 import pygame 
 
 
-button_click_fx = pygame.mixer.Sound('Sounds/button_click.mp3')
+button_click_fx = pygame.mixer.Sound('./Sounds/button_click.ogg')
 
 class Button():
 	last_click_time = 0

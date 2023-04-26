@@ -1,9 +1,9 @@
 import os
 import pygame
 import pickle
+pygame.init()
 import button
 
-pygame.init()
 
 # game window
 SCREEN_WIDTH = 640
